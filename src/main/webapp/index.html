@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>@config.name@</title>
+    <meta name="viewport" content="minimum-scale=1, initial-scale=1, width=device-width, shrink-to-fit=no">
+
+    <script>
+        const APP_CONFIG_NAME = "@config.name@"
+        const APP_VERSION = "@app.version@"
+    </script>
+
+    <script src="/js/libs/jquery-3.3.1.min.js" ></script>
+    <script src="/js/libs/underscore-min-1.9.1.js"></script>
+    <script src="/js/libs/react.development-16.8.6.js"></script>
+    <script src="/js/libs/react-dom.development-16.8.6.js"></script>
+    <script src="/js/libs/material-ui.development-4.7.2.js"></script>
+    <script src="/js/libs/react-router-dom-5.1.2.min.js"></script>
+
+    <link rel="stylesheet" href="/css/local-version/roboto-300-400-500.css" />
+    <link rel="stylesheet" href="/css/local-version/mui-icons.css">
+
+    <link rel="stylesheet" href="/assets/css/@app.version@/style.css">
+
+    <script src="/assets/js/@app.version@/morse.js"></script>
+    <script src="/assets/js/@app.version@/functions.js"></script>
+    <script src="/assets/js/@app.version@/be-integration.js"></script>
+    <script src="/assets/js/@app.version@/debug-data.js"></script>
+    <script src="/assets/js/@app.version@/messages.js"></script>
+    <script src="/assets/js/@app.version@/react-imports.js"></script>
+    <script src="/assets/js/@app.version@/react-components/report/TimestampFromInstant.js"></script>
+    <script src="/assets/js/@app.version@/react-components/report/BooleanPassFail.js"></script>
+    <script src="/assets/js/@app.version@/react-components/report/IconButtonReportCmp.js"></script>
+    <script src="/assets/js/@app.version@/react-components/report/ReportResult.js"></script>
+    <script src="/assets/js/@app.version@/react-components/ButtonWithCircularProgress.js"></script>
+    <script src="/assets/js/@app.version@/react-components/NewTextInput.js"></script>
+    <script src="/assets/js/@app.version@/react-components/TextNodeEditable.js"></script>
+    <script src="/assets/js/@app.version@/react-components/FolderComponent.js"></script>
+    <script src="/assets/js/@app.version@/react-components/ContainerFullViewActions.js"></script>
+    <script src="/assets/js/@app.version@/react-components/ImportDialog.js"></script>
+    <script src="/assets/js/@app.version@/react-components/ChangeNodeIconDialog.js"></script>
+    <script src="/assets/js/@app.version@/react-components/ConfirmActionDialog.js"></script>
+    <script src="/assets/js/@app.version@/react-components/EditableTextField.js"></script>
+    <script src="/assets/js/@app.version@/react-components/NodeIcon.js"></script>
+    <script src="/assets/js/@app.version@/react-components/AdminView.js"></script>
+    <script src="/assets/js/@app.version@/react-components/BeStatesView.js"></script>
+    <script src="/assets/js/@app.version@/react-components/TextView.js"></script>
+    <script src="/assets/js/@app.version@/react-components/ImageView.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/KeyPad.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/speech/MorseTouchDiv.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/speech/UseListReader.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/speech/UseSpeechComponent.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/speech/UseSpeechMoveSelector.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/SpeechChessComponent.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/ChessPuzzleHistory.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/ChessPuzzleView.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/StartGameAnalysisDialog.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/ChessGameView.js"></script>
+    <script src="/assets/js/@app.version@/react-components/ContainerView.js"></script>
+    <script src="/assets/js/@app.version@/react-components/NodeCommonView.js"></script>
+
+    <script src="/assets/js/@app.version@/react-components/chess/ChessBoardCell.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/ChessBoard.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/ChessBoardCellFromFen.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/ChessBoardFromFen.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/InitialPosition.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/History.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/SequencePractice.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/CommandInput.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/ChessPositionQuiz.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/CellIterator.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/ChessComponent.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/PgnEditor.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/EditablePgnViewer.js"></script>
+
+    <script src="/assets/js/@app.version@/react-components/chess/CellIteratorM.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/HistoryM.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/PuzzleProgressM.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/ChessMoveSelectorM.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/ChessComponentM.js"></script>
+    <script src="/assets/js/@app.version@/react-components/chess/ChessManagerAudioView.js"></script>
+
+    <script src="/assets/js/@app.version@/react-components/chess/PuzzlesToRepeatReport.js"></script>
+
+    <script src="/assets/js/@app.version@/react-components/ViewSelector.js"></script>
+
+</head>
+<body onmousedown="disableScrollOnMouseDown(event)">
+<div id="react-container"></div>
+
+<script src="/assets/js/@app.version@/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+.black-text textarea {
+    color: black
+}
+
+.black-text input {
+    color: black
+}
+
+.path-elem {
+    color: blue;
+}
+
+.pointer-on-hover:hover {
+    cursor: pointer;
+}
+
+.grey-background-on-hover:hover {
+    background-color: rgb(215, 215, 215);
+}
+
+.chess-move-m:hover {
+    cursor: pointer;
+    outline: 1px solid chocolate;
+}
+
+.more-options-btn:hover {
+    background-color: rgb(150, 150, 150);
+}
+
+.NodeCommonView-item {
+    width: 100%;
+}
+.NodeCommonView-item .NodeChildren-root {
+    width: 100%;
+}
+.NodeCommonView-item .NodeChildren-root .NodeChildren-item {
+    width: 100%;
+}
+.NodeCommonView-item .NodeChildren-root .NodeChildren-item .NodeChildren-inner-root {
+    width: 100%;
+}
+.NodeCommonView-item .NodeChildren-root .NodeChildren-item .NodeChildren-inner-root .NodeChildren-inner-item:nth-child(2) {
+    width: 100%;
+}
+.NodeCommonView-item .NodeChildren-root .NodeChildren-item .NodeChildren-inner-root .NodeChildren-inner-item:nth-child(2) .FolderComponent-root {
+    width: 100%;
+}
