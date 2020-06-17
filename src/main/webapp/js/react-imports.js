@@ -258,6 +258,22 @@ function reTabs({selectedTab,onTabSelected,onTabMouseUp,tabs}) {
     )
 }
 
+function useTabs({onTabSelected,onTabMouseUp,tabs}) {
+    const [selectedTab, setSelectedTab] = useState(() => _.pairs(tabs)[0][0])
+
+    return {
+        renderTabs: () => reTabs({
+            selectedTab,
+            onTabSelected: selectedTabKey => {
+                setSelectedTab(selectedTabKey)
+                onTabSelected(selectedTabKey)
+            },
+            onTabMouseUp,
+            tabs
+        })
+    }
+}
+
 /**
  * This function is used to integrate with the application router.
  * @param redirectFunction a callback from the application router which serves as a switch between application views.
