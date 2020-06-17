@@ -5,13 +5,16 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
+import java.util.function.Supplier;
 
 @Component(XoPlayerState.XO_PLAYER)
 @Scope("prototype")
 public class XoPlayerState extends State {
     public static final String XO_PLAYER = "XoPlayer";
     private boolean connected;
-    private UUID playerId;
+    private boolean gameOwner;
+    private UUID joinId;
+    private long playerId;
     private Character playerSymbol;
     private XoGameState gameState;
 
@@ -19,11 +22,27 @@ public class XoPlayerState extends State {
         super.sendMessageToFe(msg);
     }
 
-    public UUID getPlayerId() {
+    public <T> T ifGameOwner(Supplier<T> exp) {
+        if (gameOwner) {
+            return exp.get();
+        } else {
+            return null;
+        }
+    }
+
+    public UUID getJoinId() {
+        return joinId;
+    }
+
+    public void setJoinId(UUID joinId) {
+        this.joinId = joinId;
+    }
+
+    public long getPlayerId() {
         return playerId;
     }
 
-    public void setPlayerId(UUID playerId) {
+    public void setPlayerId(long playerId) {
         this.playerId = playerId;
     }
 
@@ -45,6 +64,14 @@ public class XoPlayerState extends State {
 
     public void setConnected(boolean connected) {
         this.connected = connected;
+    }
+
+    public boolean isGameOwner() {
+        return gameOwner;
+    }
+
+    public void setGameOwner(boolean gameOwner) {
+        this.gameOwner = gameOwner;
     }
 
     @Override

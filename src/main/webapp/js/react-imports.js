@@ -95,7 +95,6 @@ const RE = {
     InputBase: reFactory(MaterialUI.InputBase),
     If: (condition, ...elems) => condition?re(Fragment,{},...elems):re(Fragment,{}),
     IfNot: (condition, ...elems) => !condition?re(Fragment,{},...elems):re(Fragment,{}),
-    IfTrue: (condition, ...elems) => re(Fragment,{},...elems),
     List: reFactory(MaterialUI.List),
     ListItem: reFactory(MaterialUI.ListItem),
     ListItemText: reFactory(MaterialUI.ListItemText),
@@ -140,20 +139,6 @@ const SVG = {
     image: reFactory('image'),
     path: reFactory('path'),
     g: reFactory('g'),
-}
-
-function paper(children) {
-    return RE.Paper({},children)
-}
-
-function iconButton({onClick, iconName}) {
-    return RE.IconButton({key: iconName, color: "inherit", onClick: onClick},
-        RE.Icon({style: {fontSize: "24px"}}, iconName)
-    )
-}
-
-function clickAwayListener({onClickAway, children, key}) {
-    return re(ClickAwayListener, {key:key, onClickAway: onClickAway}, children)
 }
 
 function useQuery() {
@@ -273,21 +258,25 @@ function reTabs({selectedTab,onTabSelected,onTabMouseUp,tabs}) {
     )
 }
 
-function onMouseUpHandler({onLeftClick, onMiddleClick}) {
-    return event => {
-        if (event.nativeEvent.button == 0) {
-            onLeftClick()
-        } else if (event.nativeEvent.button == 1) {
-            onMiddleClick()
-        }
-    }
-}
-
-function link(redirect, url) {
+/**
+ * This function is used to integrate with the application router.
+ * @param redirectFunction a callback from the application router which serves as a switch between application views.
+ * @param url a URL the link refers to.
+ * @returns {{onMouseUp: (function(...[*]=))}} an object with the only property "onMouseUp". This object should be
+ * merged into properties of a react component which is expected to behave as a link.
+ * @example
+ *  RE.div({...link(redirectFunction, "some/url")},
+ *          "Click me! (right click will open in a new tab)"
+ *  )
+ */
+function link(redirectFunction, url) {
     return {
-        onMouseUp: onMouseUpHandler({
-            onLeftClick:() => redirect(url),
-            onMiddleClick: () => window.open(url)
-        })
+        onMouseUp: event => {
+            if (event.nativeEvent.button == 0) {
+                redirectFunction(url)
+            } else if (event.nativeEvent.button == 1) {
+                window.open(url)
+            }
+        }
     }
 }

@@ -9,7 +9,6 @@ import org.igor.onlinegames.xogame.dto.XoGamePhase;
 import org.igor.onlinegames.xogame.dto.XoGameStateDto;
 import org.igor.onlinegames.xogame.dto.XoPlayerDto;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
@@ -38,17 +37,19 @@ public class XoGameState extends State {
         phase = XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
         players = new ArrayList<>();
 
-        UUID xPlayerId = stateManager.createNewBackendState(XoPlayerState.XO_PLAYER);
-        XoPlayerState xPlayer = (XoPlayerState) stateManager.getBackendState(xPlayerId);
+        UUID xPlayerStateId = stateManager.createNewBackendState(XoPlayerState.XO_PLAYER);
+        XoPlayerState xPlayer = (XoPlayerState) stateManager.getBackendState(xPlayerStateId);
         xPlayer.setGameState(this);
-        xPlayer.setPlayerId(xPlayerId);
+        xPlayer.setJoinId(xPlayerStateId);
+        xPlayer.setPlayerId(1);
         xPlayer.setPlayerSymbol('x');
         players.add(xPlayer);
 
-        UUID oPlayerId = stateManager.createNewBackendState(XoPlayerState.XO_PLAYER);
-        XoPlayerState oPlayer = (XoPlayerState) stateManager.getBackendState(oPlayerId);
+        UUID oPlayerStateId = stateManager.createNewBackendState(XoPlayerState.XO_PLAYER);
+        XoPlayerState oPlayer = (XoPlayerState) stateManager.getBackendState(oPlayerStateId);
         oPlayer.setGameState(this);
-        oPlayer.setPlayerId(oPlayerId);
+        oPlayer.setJoinId(oPlayerStateId);
+        oPlayer.setPlayerId(2);
         oPlayer.setPlayerSymbol('o');
         players.add(oPlayer);
 
@@ -65,9 +66,16 @@ public class XoGameState extends State {
 
     @RpcMethod
     public XoGameStateDto getCurrentState() {
+        XoPlayerState gameOwner = new XoPlayerState();
+        gameOwner.setGameOwner(true);
+        return createViewOfCurrentState(gameOwner);
+    }
+
+    private XoGameStateDto createViewOfCurrentState(XoPlayerState viewer) {
         return XoGameStateDto.builder()
+                .phase(phase)
                 .field(createFieldDto(field))
-                .players(createPlayersDto(players))
+                .players(createPlayersDto(viewer, players))
                 .playerIdToMove(nullSafeGetter(playerToMove, XoPlayerState::getPlayerId))
                 .winnerId(nullSafeGetter(winner, XoPlayerState::getPlayerId))
                 .build();
@@ -91,23 +99,34 @@ public class XoGameState extends State {
                 phase = XoGamePhase.FINISHED;
             }
         }
-        broadcast(getCurrentState());
+        broadcastGameState();
     }
 
-    public void playerConnected() {
-        if (players.stream().allMatch(XoPlayerState::isConnected)) {
+    /**
+     * This method should be called only once for each user - when the user connects to its XoPlayerState object for
+     * the first time.
+     * @param player a player who connected
+     */
+    public void playerConnected(XoPlayerState player) {
+        if (players.stream().allMatch(p -> !p.isGameOwner())) {
+            player.setGameOwner(true);
+        }
+        player.setConnected(true);
+        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN && players.stream().allMatch(XoPlayerState::isConnected)) {
             phase = XoGamePhase.IN_PROGRESS;
         }
-        broadcast(getCurrentState());
+        broadcastGameState();
     }
 
-    private void broadcast(XoGameStateDto dto) {
-        players.forEach(xoPlayerState -> xoPlayerState.sendMessageToFe(dto));
+    private void broadcastGameState() {
+        players.forEach(xoPlayerState -> xoPlayerState.sendMessageToFe(createViewOfCurrentState(xoPlayerState)));
     }
 
-    private List<XoPlayerDto> createPlayersDto(List<XoPlayerState> players) {
+    private List<XoPlayerDto> createPlayersDto(XoPlayerState viewer, List<XoPlayerState> players) {
         return players.stream()
                 .map(xoPlayerState -> XoPlayerDto.builder()
+                        .joinId(viewer.ifGameOwner(() -> xoPlayerState.getJoinId()))
+                        .gameOwner(viewer.ifGameOwner(() -> xoPlayerState.isGameOwner()))
                         .playerId(xoPlayerState.getPlayerId())
                         .connected(xoPlayerState.isConnected())
                         .build()

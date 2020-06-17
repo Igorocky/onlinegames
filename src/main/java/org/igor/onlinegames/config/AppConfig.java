@@ -18,7 +18,7 @@ public class AppConfig implements WebMvcConfigurer, WebSocketConfigurer {
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        registry.addRedirectViewController("/", "/fe/selectgame");
+        registry.addRedirectViewController("/", "/fe/newgame");
     }
 
     @Bean
