@@ -11,7 +11,7 @@ import java.util.UUID;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class XoPlayerDto {
     private UUID joinId;
-    private long playerId;
+    private int playerId;
     private boolean connected;
     private Boolean gameOwner;
 }

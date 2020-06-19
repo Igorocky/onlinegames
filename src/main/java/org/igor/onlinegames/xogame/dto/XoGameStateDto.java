@@ -13,6 +13,6 @@ public class XoGameStateDto implements XoGameDto {
     private XoGamePhase phase;
     private List<List<XoCellDto>> field;
     private List<XoPlayerDto> players;
-    private Long playerIdToMove;
-    private Long winnerId;
+    private Integer playerIdToMove;
+    private Integer winnerId;
 }

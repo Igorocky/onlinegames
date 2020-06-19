@@ -1,6 +1,21 @@
+"use strict";
+
+const FE_CONTEXT_PATH = "/fe"
+const XO_GAME_BASE_PATH = FE_CONTEXT_PATH + "/xogame"
+
+const PATH = {
+    stateWebSocketUrl: "/be/websocket/state",
+    admin: FE_CONTEXT_PATH + "/admin",
+    gameSelector: FE_CONTEXT_PATH + "/newgame",
+    xoGame: ({gameId,joinId}) => XO_GAME_BASE_PATH + "?"
+        + (gameId?("gameId="+gameId):"")
+        + (joinId?("joinId="+joinId):""),
+}
+
 const VIEWS = [
-    {name:"GameSelector", component: GameSelector, props:{}, path: PATH.gameSelector},
-    {name:"AdminPage", component: AdminView, props:{}, path: PATH.admin},
+    {name:"AdminPage", component: AdminView, path: PATH.admin},
+    {name:"GameSelector", component: GameSelector, path: PATH.gameSelector},
+    {name:"XoGame", component: XoGameView, path: XO_GAME_BASE_PATH},
 ]
 
 const ViewSelector = ({}) => {

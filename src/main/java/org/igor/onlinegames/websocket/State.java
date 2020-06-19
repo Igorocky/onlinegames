@@ -2,7 +2,6 @@ package org.igor.onlinegames.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.tuple.Pair;
-import org.igor.onlinegames.exceptions.OnlinegamesException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +12,8 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public abstract class State {
@@ -21,7 +22,7 @@ public abstract class State {
     private Instant createdAt;
     private Instant lastInMsgAt;
     private Instant lastOutMsgAt;
-    private WebSocketSession session;
+    private List<WebSocketSession> sessions = new ArrayList<>();
     private Clock clock = Clock.systemUTC();
 
     @Autowired
@@ -35,19 +36,32 @@ public abstract class State {
         return methodMap;
     }
 
-    public void setSession(WebSocketSession session) {
-        this.session = session;
+    public synchronized void bind(WebSocketSession session) {
+        sessions.add(session);
     }
 
-    public void closeSession() {
-        if (session != null && session.isOpen()) {
+    public synchronized void unbind(WebSocketSession session) {
+        for (int i = 0; i < sessions.size(); i++) {
+            if (sessions.get(i) == session) {
+                sessions.remove(i);
+                i--;
+            }
+        }
+    }
+
+    public synchronized void unbindAndClose(WebSocketSession session) {
+        unbind(session);
+        if (session.isOpen()) {
             try {
                 session.close();
             } catch (IOException ex) {
                 LOG.error(ex.getMessage(), ex);
             }
         }
-        session = null;
+    }
+
+    public synchronized void unbindAndCloseAllWebSockets() {
+        sessions.forEach(this::unbindAndClose);
     }
 
     public void setCreatedAt(Instant createdAt) {
@@ -75,12 +89,14 @@ public abstract class State {
     }
 
     protected synchronized void sendMessageToFe(Object msg) {
-        if (session != null && session.isOpen()) {
+        if (!sessions.isEmpty()) {
             setLastOutMsgAt(clock.instant());
-            try {
-                session.sendMessage(new TextMessage(mapper.writeValueAsString(msg)));
-            } catch (IOException ex) {
-                throw new OnlinegamesException(ex);
+            for (WebSocketSession session : sessions) {
+                try {
+                    session.sendMessage(new TextMessage(mapper.writeValueAsString(msg)));
+                } catch (IOException ex) {
+                    LOG.error(ex.getMessage(), ex);
+                }
             }
         }
     }

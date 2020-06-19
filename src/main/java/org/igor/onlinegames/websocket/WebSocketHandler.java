@@ -23,14 +23,20 @@ public class WebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         final String payload = message.getPayload();
+        AsyncWebSocketRpcCall request = mapper.readValue(payload, AsyncWebSocketRpcCall.class);
         Optional<UUID> stateIdOpt = Optional.ofNullable((UUID) session.getAttributes().get(STATE_ID));
-        if (!stateIdOpt.isPresent()) {
-            UUID stateId = UUID.fromString(payload);
-            session.getAttributes().put(STATE_ID, stateId);
-            bindSessionToState(stateManager.getBackendState(stateId), session);
+        if ("-bindToState".equals(request.getMethodName())) {
+            UUID newStateId = UUID.fromString(request.getParams().get("stateId").asText());
+            UUID oldStateId = stateIdOpt.orElse(null);
+            if (!newStateId.equals(oldStateId)) {
+                if (oldStateId != null) {
+                    stateManager.getBackendState(oldStateId).unbind(session);
+                }
+                stateManager.getBackendState(newStateId).bind(session);
+                session.getAttributes().put(STATE_ID, newStateId);
+            }
         } else {
             final UUID stateId = stateIdOpt.get();
-            AsyncWebSocketRpcCall request = mapper.readValue(payload, AsyncWebSocketRpcCall.class);
             executorService.submit(() -> {
                 Object resp = stateManager.invokeMethodOnBackendState(
                         stateId, request.getMethodName(), request.getParams()
@@ -46,17 +52,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         UUID stateId = (UUID) session.getAttributes().get(STATE_ID);
         if (stateId != null) {
-            unbindSessionFromState(stateManager.getBackendState(stateId));
+            stateManager.getBackendState(stateId).unbindAndClose(session);
         }
-    }
-
-    private void bindSessionToState(State stateObject, WebSocketSession session) {
-        stateObject.closeSession();
-        stateObject.setSession(session);
-    }
-
-    private void unbindSessionFromState(State stateObject) {
-        stateObject.closeSession();
-        stateObject.setSession(null);
     }
 }

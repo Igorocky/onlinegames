@@ -1,5 +1,7 @@
 package org.igor.onlinegames.xogame.manager;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.igor.onlinegames.websocket.State;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -11,11 +13,23 @@ import java.util.function.Supplier;
 @Scope("prototype")
 public class XoPlayerState extends State {
     public static final String XO_PLAYER = "XoPlayer";
+
+    @Setter @Getter
     private boolean connected;
+
+    @Setter @Getter
     private boolean gameOwner;
+
+    @Setter @Getter
     private UUID joinId;
-    private long playerId;
+
+    @Setter @Getter
+    private int playerId;
+
+    @Setter @Getter
     private Character playerSymbol;
+
+    @Setter
     private XoGameState gameState;
 
     public void sendMessageToFe(Object msg) {
@@ -30,52 +44,8 @@ public class XoPlayerState extends State {
         }
     }
 
-    public UUID getJoinId() {
-        return joinId;
-    }
-
-    public void setJoinId(UUID joinId) {
-        this.joinId = joinId;
-    }
-
-    public long getPlayerId() {
-        return playerId;
-    }
-
-    public void setPlayerId(long playerId) {
-        this.playerId = playerId;
-    }
-
-    public Character getPlayerSymbol() {
-        return playerSymbol;
-    }
-
-    public void setPlayerSymbol(Character playerSymbol) {
-        this.playerSymbol = playerSymbol;
-    }
-
-    public void setGameState(XoGameState gameState) {
-        this.gameState = gameState;
-    }
-
-    public boolean isConnected() {
-        return connected;
-    }
-
-    public void setConnected(boolean connected) {
-        this.connected = connected;
-    }
-
-    public boolean isGameOwner() {
-        return gameOwner;
-    }
-
-    public void setGameOwner(boolean gameOwner) {
-        this.gameOwner = gameOwner;
-    }
-
     @Override
     protected Object getViewRepresentation() {
-        return null;
+        return "joinId = " + joinId;
     }
 }

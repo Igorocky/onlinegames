@@ -75,7 +75,7 @@ public class StateManager {
     @RpcMethod
     public void removeBackendState(UUID stateId) {
         State stateObj = getBackendState(stateId);
-        stateObj.closeSession();
+        stateObj.unbindAndCloseAllWebSockets();
         states.remove(stateId);
     }
 

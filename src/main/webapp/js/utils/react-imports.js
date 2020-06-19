@@ -145,48 +145,51 @@ function useQuery() {
     return new URLSearchParams(useLocation().search);
 }
 
-function useBackendState({stateType, onBackendStateCreated, onMessageFromBackend}) {
-    const [stateId, setStateId] = useState(null)
-    const [webSocket, setWebSocket] = useState(null)
+const WEB_SOCKET_STATE_CONNECTING = 0
+const WEB_SOCKET_STATE_OPEN = 1
+const WEB_SOCKET_STATE_CLOSING = 2
+const WEB_SOCKET_STATE_CLOSED = 3
 
-    const isSocketReady = webSocket && webSocket.readyState == 1
+function useBackend({stateType, stateId, onBackendStateCreated, onMessageFromBackend}) {
+    const [beStateId, setBeStateId] = useState(stateId)
+    const webSocket = useRef(null)
 
-    function callBackendStateMethod(methodName, params) {
-        if (!isSocketReady) {
-            const newWebSocket = new WebSocket("ws://" + location.host + PATH.stateWebSocketUrl)
-            newWebSocket.onmessage = event => onMessageFromBackend(JSON.parse(event.data))
-            newWebSocket.onopen = () => {
-                newWebSocket.send(stateId)
-                callBackendStateMethodInner(newWebSocket, methodName, params)
-                setWebSocket(newWebSocket)
-            }
-        } else {
-            callBackendStateMethodInner(webSocket, methodName, params)
-        }
-    }
-
-    function callBackendStateMethodInner(webSocket, methodName, params) {
-        webSocket.send(JSON.stringify({methodName:methodName, params:params}))
-    }
-
-    const backend = {call: callBackendStateMethod}
+    const backend = {isReady: beStateId != null, call: callBackendStateMethod}
 
     useEffect(() => {
-        if (!stateId) {
+        if (!beStateId) {
             doRpcCall("createNewBackendState", {stateType:stateType}, newStateId => {
-                setStateId(newStateId)
+                setBeStateId(newStateId)
             })
         } else {
             if (onBackendStateCreated) {
                 onBackendStateCreated(backend)
             }
         }
-        return () => {
-            if (stateId) {
-                doRpcCall("removeBackendState", {stateId:stateId})
+    }, [beStateId])
+
+    function callBackendStateMethod(methodName, params) {
+        if (!webSocket.current
+            || webSocket.current.readyState == WEB_SOCKET_STATE_CLOSED
+            || webSocket.current.readyState == WEB_SOCKET_STATE_CLOSING) {
+            webSocket.current = new WebSocket("ws://" + location.host + PATH.stateWebSocketUrl)
+            webSocket.current.onmessage = event => onMessageFromBackend(JSON.parse(event.data))
+            webSocket.current.onopen = () => {
+                callBackendStateMethodInner(webSocket.current, "-bindToState", {stateId: beStateId})
+                callBackendStateMethodInner(webSocket.current, methodName, params)
             }
+        } else if (webSocket.current.readyState == WEB_SOCKET_STATE_CONNECTING) {
+            window.setTimeout(() => {
+                callBackendStateMethod(methodName, params)
+            }, 300)
+        } else {
+            callBackendStateMethodInner(webSocket, methodName, params)
         }
-    }, [stateId])
+    }
+
+    function callBackendStateMethodInner(webSocket, methodName, params) {
+        webSocket.send(JSON.stringify({methodName, params}))
+    }
 
     return backend
 }

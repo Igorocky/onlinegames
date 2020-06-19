@@ -21,19 +21,23 @@
 
     <link rel="stylesheet" href="/assets/css/@app.version@/style.css">
 
-    <script src="/assets/js/@app.version@/functions.js"></script>
-    <script src="/assets/js/@app.version@/react-imports.js"></script>
+    <script src="/assets/js/@app.version@/utils/functions.js"></script>
+    <script src="/assets/js/@app.version@/utils/react-imports.js"></script>
 
-    <script src="/assets/js/@app.version@/react-components/ButtonWithCircularProgress.js"></script>
-    <script src="/assets/js/@app.version@/react-components/ConfirmActionDialog.js"></script>
-    <script src="/assets/js/@app.version@/react-components/GameSelector.js"></script>
-    <script src="/assets/js/@app.version@/react-components/AdminView.js"></script>
-    <script src="/assets/js/@app.version@/react-components/ViewSelector.js"></script>
+    <script src="/assets/js/@app.version@/react-components/common/ButtonWithCircularProgress.js"></script>
+    <script src="/assets/js/@app.version@/react-components/common/ConfirmActionDialog.js"></script>
+    <script src="/assets/js/@app.version@/react-components/common/AdminView.js"></script>
+    <script src="/assets/js/@app.version@/react-components/games/GameSelector.js"></script>
+    <script src="/assets/js/@app.version@/react-components/games/xogame/XoGameView.js"></script>
+    <script src="/assets/js/@app.version@/react-components/games/xogame/XoGameMasterView.js"></script>
+    <script src="/assets/js/@app.version@/react-components/games/xogame/XoGamePlayerView.js"></script>
+
+    <script src="/assets/js/@app.version@/react-components/common/ViewSelector.js"></script>
 
 </head>
 <body onmousedown="disableScrollOnMouseDown(event)">
 <div id="react-container"></div>
 
-<script src="/assets/js/@app.version@/index.js"></script>
+<script src="/assets/js/@app.version@/utils/index.js"></script>
 </body>
 </html>
