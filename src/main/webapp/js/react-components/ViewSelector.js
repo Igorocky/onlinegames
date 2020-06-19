@@ -1,5 +1,6 @@
 const VIEWS = [
     {name:"GameSelector", component: GameSelector, props:{}, path: PATH.gameSelector},
+    {name:"AdminPage", component: AdminView, props:{}, path: PATH.admin},
 ]
 
 const ViewSelector = ({}) => {

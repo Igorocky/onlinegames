@@ -1,29 +1,50 @@
 "use strict";
 
+const STATE_INFO_DTO = {
+    stateId: "stateId",
+    stateType: "stateType",
+    createdAt: "createdAt",
+    lastInMsgAt: "lastInMsgAt",
+    lastOutMsgAt: "lastOutMsgAt",
+    viewRepresentation: "viewRepresentation",
+}
+
 const AdminView = ({}) => {
 
     const TAB_BE_STATES = "TAB_BE_STATES"
+    const TAB_OTHER = "TAB_OTHER"
     const [beStates, setBeStates] = useState(null)
 
     const tabs = {
-        [TAB_BE_STATES]: {label: "BE States", render: renderBeStates}
+        [TAB_BE_STATES]: {label: "BE States", render: renderBeStates},
+        [TAB_OTHER]: {label: "Other", render: () => "Other"},
     }
 
-    const {renderTabs} = useTabs({onTabSelected,tabs})
+    const {renderTabs} = useTabs({onTabSelected, tabs})
+
+    useEffect(() => {
+        loadBeStates()
+    }, [])
 
     function onTabSelected(selectedTabKey) {
         if (selectedTabKey == TAB_BE_STATES) {
-
+            loadBeStates()
         } else {
-
+            setBeStates(null)
         }
+    }
+
+    function loadBeStates() {
+        doRpcCall("listBeStates", {}, beStatesResponse => {
+            setBeStates(beStatesResponse)
+        })
     }
 
     function renderBeStates() {
         if (!beStates) {
-            return RE.LinearProgress({})
+            return RE.CircularProgress({})
         } else {
-            return paper(RE.Table({size:"small"},
+            return RE.Paper({}, RE.Table({size:"small"},
                 RE.TableHead({},
                     RE.TableRow({},
                         RE.TableCell({}, "ID"),
@@ -50,5 +71,5 @@ const AdminView = ({}) => {
         }
     }
 
-    return reTabs({})
+    return renderTabs()
 }

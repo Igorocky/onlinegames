@@ -75,8 +75,8 @@ public abstract class State {
     }
 
     protected synchronized void sendMessageToFe(Object msg) {
-        setLastOutMsgAt(clock.instant());
         if (session != null && session.isOpen()) {
+            setLastOutMsgAt(clock.instant());
             try {
                 session.sendMessage(new TextMessage(mapper.writeValueAsString(msg)));
             } catch (IOException ex) {

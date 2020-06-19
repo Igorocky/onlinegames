@@ -2,8 +2,10 @@
 
 const GameSelector = ({}) => {
 
-    function startNewGame(gameId) {
-
+    function startNewGame(nameOfGame) {
+        doRpcCall("createNewBackendState", {stateType:nameOfGame}, gameId => {
+            console.log("gameId = " + JSON.stringify(gameId))
+        })
     }
 
     return RE.Container.col.top.center({style:{marginTop:"100px"}},{},

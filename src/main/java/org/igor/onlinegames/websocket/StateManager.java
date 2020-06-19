@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.WebSocketSession;
 
 import java.time.Clock;
 import java.util.Comparator;
@@ -18,8 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @RpcMethodsCollection
@@ -27,7 +24,6 @@ import java.util.stream.Collectors;
 public class StateManager {
     private static final Logger LOG = LoggerFactory.getLogger(StateManager.class);
     private Map<UUID, State> states = new HashMap<>();
-    private ExecutorService executorService = Executors.newFixedThreadPool(5);
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -45,10 +41,6 @@ public class StateManager {
         stateObj.setCreatedAt(clock.instant());
         states.put(newId, stateObj);
         return newId;
-    }
-
-    public State getBackendState(UUID id) {
-        return states.get(id);
     }
 
     @RpcMethod
@@ -69,39 +61,25 @@ public class StateManager {
     }
 
     @RpcMethod
+    public Object invokeMethodOnBackendState(UUID stateId, String methodName, JsonNode params) {
+        final State stateObject = getBackendState(stateId);
+        stateObject.setLastInMsgAt(clock.instant());
+        try {
+            return rpcDispatcher.dispatchRpcCall(methodName, params, stateObject.getMethodMap());
+        } catch (Exception ex) {
+            LOG.error(ex.getMessage(), ex);
+            return new OnlinegamesException(ex);
+        }
+    }
+
+    @RpcMethod
     public void removeBackendState(UUID stateId) {
-        State stateObj = getStateObject(stateId);
+        State stateObj = getBackendState(stateId);
         stateObj.closeSession();
         states.remove(stateId);
     }
 
-    public void invokeMethodOnBackendState(UUID stateId, String methodName, JsonNode params) {
-        executorService.submit(() -> {
-            final State stateObject = getStateObject(stateId);
-            stateObject.setLastInMsgAt(clock.instant());
-            try {
-                Object result = rpcDispatcher.dispatchRpcCall(methodName, params, stateObject.getMethodMap());
-                if (result != null) {
-                    stateObject.sendMessageToFe(result);
-                }
-            } catch (Exception ex) {
-                LOG.error(ex.getMessage(), ex);
-                throw new OnlinegamesException(ex);
-            }
-        });
-    }
-
-    public void bindSessionToState(UUID stateId, WebSocketSession session) {
-        final State stateObject = getStateObject(stateId);
-        stateObject.closeSession();
-        stateObject.setSession(session);
-    }
-
-    public void unbindSessionFromState(UUID stateId) {
-        getStateObject(stateId).setSession(null);
-    }
-
-    private State getStateObject(UUID stateId) {
-        return states.get(stateId);
+    public State getBackendState(UUID id) {
+        return states.get(id);
     }
 }

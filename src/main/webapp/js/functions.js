@@ -12,13 +12,14 @@ const DOWN_KEY_CODE = 40
 const PATH = {
     stateWebSocketUrl: "/be/websocket/state",
     gameSelector: CONTEXT_PATH + "/newgame",
+    admin: CONTEXT_PATH + "/admin",
 }
 
 function hasValue(variable) {
     return variable !== undefined && variable !== null
 }
 
-function doPost({url, data, onSuccess}) {
+function doPost(url, data, onSuccess) {
     $.ajax({
         type: "POST",
         url: url,

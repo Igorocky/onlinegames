@@ -57,9 +57,9 @@ public class XoGameState extends State {
 
         field = new ArrayList<>(3);
         for (int x = 0; x < 3; x++) {
-            field.set(x, new ArrayList<>());
+            field.add(new ArrayList<>());
             for (int y = 0; y < 3; y++) {
-                field.get(x).set(y, null);
+                field.get(x).add(null);
             }
         }
     }

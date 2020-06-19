@@ -147,7 +147,6 @@ function useQuery() {
 
 function useBackendState({stateType, onBackendStateCreated, onMessageFromBackend}) {
     const [stateId, setStateId] = useState(null)
-    const [isReady, setIsReady] = useState(false)
     const [webSocket, setWebSocket] = useState(null)
 
     const isSocketReady = webSocket && webSocket.readyState == 1
@@ -170,7 +169,7 @@ function useBackendState({stateType, onBackendStateCreated, onMessageFromBackend
         webSocket.send(JSON.stringify({methodName:methodName, params:params}))
     }
 
-    const backend = {isReady: isSocketReady && isReady, call: callBackendStateMethod}
+    const backend = {call: callBackendStateMethod}
 
     useEffect(() => {
         if (!stateId) {
@@ -181,7 +180,6 @@ function useBackendState({stateType, onBackendStateCreated, onMessageFromBackend
             if (onBackendStateCreated) {
                 onBackendStateCreated(backend)
             }
-            setIsReady(true)
         }
         return () => {
             if (stateId) {
