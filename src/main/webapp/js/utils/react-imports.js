@@ -172,7 +172,7 @@ function useBackend({stateType, stateId, onBackendStateCreated, onMessageFromBac
         if (!webSocket.current
             || webSocket.current.readyState == WEB_SOCKET_STATE_CLOSED
             || webSocket.current.readyState == WEB_SOCKET_STATE_CLOSING) {
-            webSocket.current = new WebSocket("ws://" + location.host + PATH.stateWebSocketUrl)
+            webSocket.current = new WebSocket("ws://" + location.host + "/be/websocket/state")
             webSocket.current.onmessage = event => onMessageFromBackend(JSON.parse(event.data))
             webSocket.current.onopen = () => {
                 callBackendStateMethodInner(webSocket.current, "-bindToState", {stateId: beStateId})

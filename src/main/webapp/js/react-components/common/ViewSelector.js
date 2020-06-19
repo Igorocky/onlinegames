@@ -3,8 +3,7 @@
 const FE_CONTEXT_PATH = "/fe"
 const XO_GAME_BASE_PATH = FE_CONTEXT_PATH + "/xogame"
 
-const PATH = {
-    stateWebSocketUrl: "/be/websocket/state",
+const VIEW_URLS = {
     admin: FE_CONTEXT_PATH + "/admin",
     gameSelector: FE_CONTEXT_PATH + "/newgame",
     xoGame: ({gameId,joinId}) => XO_GAME_BASE_PATH + "?"
@@ -13,13 +12,13 @@ const PATH = {
 }
 
 const VIEWS = [
-    {name:"AdminPage", component: AdminView, path: PATH.admin},
-    {name:"GameSelector", component: GameSelector, path: PATH.gameSelector},
+    {name:"AdminPage", component: AdminView, path: VIEW_URLS.admin},
+    {name:"GameSelector", component: GameSelector, path: VIEW_URLS.gameSelector},
     {name:"XoGame", component: XoGameView, path: XO_GAME_BASE_PATH},
 ]
 
 const ViewSelector = ({}) => {
-    const [redirect, setRedirect] = useState(null)
+    const [currentViewUrl, setCurrentViewUrl] = useState(null)
 
     function getViewRoutes() {
         return VIEWS.map(view => re(Route, {
@@ -29,24 +28,24 @@ const ViewSelector = ({}) => {
             render: props => re(view.component, {
                 ...props,
                 ...(view.props?view.props:{}),
-                redirect: path => setRedirect(path),
-                createLink: url => link(setRedirect, url)
+                openView: url => setCurrentViewUrl(url),
+                createLink: url => link(setCurrentViewUrl, url)
             })
         }))
     }
 
-    function redirectTo(to) {
-        return to ? re(Redirect,{key: to, to: to}) : null
+    function renderRedirectElem(url) {
+        return url ? re(Redirect,{key: url, to: url}) : null
     }
 
-    if (redirect) {
+    if (currentViewUrl) {
         return re(BrowserRouter, {},
             re(Switch, {}, getViewRoutes()),
-            redirectTo(redirect)
+            renderRedirectElem(currentViewUrl)
         )
     } else {
-        const newRedirect = window.location.pathname + window.location.search
-        setRedirect(newRedirect)
-        return redirectTo(newRedirect)
+        const newViewUrl = window.location.pathname + window.location.search
+        setCurrentViewUrl(newViewUrl)
+        return renderRedirectElem(newViewUrl)
     }
 }

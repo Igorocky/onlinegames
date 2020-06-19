@@ -1,10 +1,10 @@
 "use strict";
 
-const GameSelector = ({redirect}) => {
+const GameSelector = ({openView}) => {
 
     function startNewXoGame() {
         doRpcCall("createNewBackendState", {stateType:"XoGame"}, gameId => {
-            redirect(PATH.xoGame({gameId}))
+            openView(VIEW_URLS.xoGame({gameId}))
         })
     }
 
