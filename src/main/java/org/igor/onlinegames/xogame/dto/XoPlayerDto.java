@@ -14,4 +14,5 @@ public class XoPlayerDto {
     private int playerId;
     private boolean connected;
     private Boolean gameOwner;
+    private Character symbol;
 }

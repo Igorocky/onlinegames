@@ -149,12 +149,13 @@ const WEB_SOCKET_STATE_CONNECTING = 0
 const WEB_SOCKET_STATE_OPEN = 1
 const WEB_SOCKET_STATE_CLOSING = 2
 const WEB_SOCKET_STATE_CLOSED = 3
+const BIND_TO_BE_STATE_METHOD_NAME = "-bindToState";
 
 function useBackend({stateType, stateId, onBackendStateCreated, onMessageFromBackend}) {
     const [beStateId, setBeStateId] = useState(stateId)
     const webSocket = useRef(null)
 
-    const backend = {isReady: beStateId != null, call: callBackendStateMethod}
+    const backend = {isReady: beStateId != null, sendMsg: sendMessageToBeState, call: callMethodOnBeState}
 
     useEffect(() => {
         if (!beStateId) {
@@ -162,31 +163,36 @@ function useBackend({stateType, stateId, onBackendStateCreated, onMessageFromBac
                 setBeStateId(newStateId)
             })
         } else {
+            sendMessageToBeState(BIND_TO_BE_STATE_METHOD_NAME, {stateId: beStateId})
             if (onBackendStateCreated) {
                 onBackendStateCreated(backend)
             }
         }
     }, [beStateId])
 
-    function callBackendStateMethod(methodName, params) {
+    function callMethodOnBeState(methodName, params, callback) {
+        doRpcCall("invokeMethodOnBackendState", {stateId:beStateId, methodName, params}, callback)
+    }
+
+    function sendMessageToBeState(methodName, params) {
         if (!webSocket.current
             || webSocket.current.readyState == WEB_SOCKET_STATE_CLOSED
             || webSocket.current.readyState == WEB_SOCKET_STATE_CLOSING) {
             webSocket.current = new WebSocket("ws://" + location.host + "/be/websocket/state")
             webSocket.current.onmessage = event => onMessageFromBackend(JSON.parse(event.data))
             webSocket.current.onopen = () => {
-                callBackendStateMethodInner(webSocket.current, "-bindToState", {stateId: beStateId})
+                callBackendStateMethodInner(webSocket.current, BIND_TO_BE_STATE_METHOD_NAME, {stateId: beStateId})
                 callBackendStateMethodInner(webSocket.current, methodName, params)
             }
         } else if (webSocket.current.readyState == WEB_SOCKET_STATE_CONNECTING) {
             window.setTimeout(() => {
-                callBackendStateMethod(methodName, params)
+                sendMessageToBeState(methodName, params)
             }, 300)
         } else {
             callBackendStateMethodInner(webSocket, methodName, params)
         }
     }
-
+    
     function callBackendStateMethodInner(webSocket, methodName, params) {
         webSocket.send(JSON.stringify({methodName, params}))
     }

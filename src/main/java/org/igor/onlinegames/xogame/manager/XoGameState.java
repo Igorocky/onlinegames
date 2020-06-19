@@ -129,6 +129,7 @@ public class XoGameState extends State {
                         .gameOwner(viewer.ifGameOwner(() -> xoPlayerState.isGameOwner()))
                         .playerId(xoPlayerState.getPlayerId())
                         .connected(xoPlayerState.isConnected())
+                        .symbol(xoPlayerState.getPlayerSymbol())
                         .build()
                 )
                 .collect(Collectors.toList());
