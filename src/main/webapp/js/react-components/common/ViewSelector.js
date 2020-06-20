@@ -17,6 +17,11 @@ const VIEWS = [
     {name:"XoGame", component: XoGameView, path: XO_GAME_BASE_PATH},
 ]
 
+function getViewAbsoluteUrl(relUrl) {
+    const location = window.location
+    return location.protocol + "//" + location.host + relUrl
+}
+
 const ViewSelector = ({}) => {
     const [currentViewUrl, setCurrentViewUrl] = useState(null)
 

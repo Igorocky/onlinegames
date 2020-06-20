@@ -9,7 +9,6 @@ import lombok.Data;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class XoCellDto {
     private Character symbol;
-    private Boolean winningCell;
     private int x;
     private int y;
 }

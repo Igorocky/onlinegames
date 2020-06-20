@@ -52,7 +52,7 @@ const XoGamePlayerView = ({joinId}) => {
         return RE.Fragment({},
             players.map(player => RE.Container.row.left.center({key:player.playerId},{style:{marginLeft:"50px"}},
                 RE.span({style:{fontSize:"50px"}},player.symbol),
-                "http://localhost:8080/fe/xogame?joinId=" + player.joinId,
+                getViewAbsoluteUrl(VIEW_URLS.xoGame({joinId:player.joinId})),
                 player.connected ? "CONNECTED" : "WAITING..."
             ))
         )
