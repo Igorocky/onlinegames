@@ -102,11 +102,6 @@ public class XoGameState extends State {
         broadcastGameState();
     }
 
-    /**
-     * This method should be called only once for each user - when the user connects to its XoPlayerState object for
-     * the first time.
-     * @param player a player who connected
-     */
     public void playerConnected(XoPlayerState player) {
         if (players.stream().allMatch(p -> !p.isGameOwner())) {
             player.setGameOwner(true);

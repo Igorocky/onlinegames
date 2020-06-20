@@ -4,11 +4,7 @@ const XoGameMasterView = ({openView, gameId}) => {
     const backend = useBackend({stateId:gameId, onMessageFromBackend})
     const [beState, setBeState] = useState(null)
 
-    useEffect(() => {
-        if (!beState) {
-            backend.call("getCurrentState", {}, state => setBeState(state))
-        }
-    }, [beState])
+    useEffect(() => backend.send("getCurrentState"), [])
 
     function onMessageFromBackend(msg) {
         if (msg.type && msg.type == "state") {
@@ -23,7 +19,6 @@ const XoGameMasterView = ({openView, gameId}) => {
     function renderJoinUrlElems(player) {
         return RE.Fragment({},
             player.symbol,
-            RE.span({style:{marginLeft:"20px"}}, "http://localhost:8080/fe/xogame?joinId=" + player.joinId),
             RE.Button({style:{marginLeft:"20px"}, onClick: () => joinGame(player.joinId)}, "Join")
         )
     }

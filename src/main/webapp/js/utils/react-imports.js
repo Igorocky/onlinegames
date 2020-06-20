@@ -153,22 +153,22 @@ const BIND_TO_BE_STATE_METHOD_NAME = "-bindToState";
 
 function useBackend({stateType, stateId, onBackendStateCreated, onMessageFromBackend}) {
     const [beStateId, setBeStateId] = useState(stateId)
+    const [callBeStateCreated, setCallBeStateCreated] = useState(false)
     const webSocket = useRef(null)
 
-    const backend = {isReady: beStateId != null, sendMsg: sendMessageToBeState, call: callMethodOnBeState}
+    const backend = {isReady: beStateId != null, send: sendMessageToBeState, call: callMethodOnBeState}
 
     useEffect(() => {
         if (!beStateId) {
             doRpcCall("createNewBackendState", {stateType:stateType}, newStateId => {
                 setBeStateId(newStateId)
+                setCallBeStateCreated(true)
             })
-        } else {
-            sendMessageToBeState(BIND_TO_BE_STATE_METHOD_NAME, {stateId: beStateId})
-            if (onBackendStateCreated) {
-                onBackendStateCreated(backend)
-            }
+        } else if (callBeStateCreated && onBackendStateCreated) {
+            setCallBeStateCreated(false)
+            onBackendStateCreated(backend)
         }
-    }, [beStateId])
+    }, [beStateId, callBeStateCreated])
 
     function callMethodOnBeState(methodName, params, callback) {
         doRpcCall("invokeMethodOnBackendState", {stateId:beStateId, methodName, params}, callback)
@@ -189,7 +189,7 @@ function useBackend({stateType, stateId, onBackendStateCreated, onMessageFromBac
                 sendMessageToBeState(methodName, params)
             }, 300)
         } else {
-            callBackendStateMethodInner(webSocket, methodName, params)
+            callBackendStateMethodInner(webSocket.current, methodName, params)
         }
     }
     
