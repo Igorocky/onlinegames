@@ -23,7 +23,7 @@ const XoGameMasterView = ({openView, gameId}) => {
         )
     }
 
-    function renderJoinUrls() {
+    function renderJoinButtons() {
         return RE.Container.col.top.center({style:{marginTop:"100px"}},{},
             RE.Container.col.top.left({},{},
                 beState.players.map(player => RE.Container.row.center.center({},{},
@@ -34,7 +34,7 @@ const XoGameMasterView = ({openView, gameId}) => {
     }
 
     if (beState) {
-        return renderJoinUrls()
+        return renderJoinButtons()
     } else {
         return RE.CircularProgress({})
     }

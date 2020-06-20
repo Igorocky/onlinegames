@@ -7,9 +7,6 @@ import lombok.Data;
 @Data
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class XoCellDto {
-    private Character symbol;
-    private Boolean winningCell;
-    private int x;
-    private int y;
+public class XoGameErrorDto implements XoGameDto {
+    private String errorDescription;
 }

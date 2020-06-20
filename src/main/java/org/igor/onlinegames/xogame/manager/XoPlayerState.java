@@ -2,6 +2,7 @@ package org.igor.onlinegames.xogame.manager;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -31,6 +32,16 @@ public class XoPlayerState extends State {
 
     @Setter
     private XoGameState gameState;
+
+    @RpcMethod
+    public void connect() {
+        gameState.playerConnected(this);
+    }
+
+    @RpcMethod
+    public void clickCell(int x, int y) {
+        gameState.clickCell(this, x, y);
+    }
 
     public void sendMessageToFe(Object msg) {
         super.sendMessageToFe(msg);

@@ -5,6 +5,7 @@ import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
 import org.igor.onlinegames.websocket.StateManager;
 import org.igor.onlinegames.xogame.dto.XoCellDto;
+import org.igor.onlinegames.xogame.dto.XoGameErrorDto;
 import org.igor.onlinegames.xogame.dto.XoGamePhase;
 import org.igor.onlinegames.xogame.dto.XoGameStateDto;
 import org.igor.onlinegames.xogame.dto.XoPlayerDto;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -53,7 +55,7 @@ public class XoGameState extends State {
         oPlayer.setPlayerSymbol('o');
         players.add(oPlayer);
 
-        playerToMove = oPlayer;
+        playerToMove = xPlayer;
 
         field = new ArrayList<>(3);
         for (int x = 0; x < 3; x++) {
@@ -75,31 +77,47 @@ public class XoGameState extends State {
         return XoGameStateDto.builder()
                 .phase(phase)
                 .field(createFieldDto(field))
+                .currentPlayerId(viewer.getPlayerId())
                 .players(createPlayersDto(viewer, players))
                 .playerIdToMove(nullSafeGetter(playerToMove, XoPlayerState::getPlayerId))
                 .winnerId(nullSafeGetter(winner, XoPlayerState::getPlayerId))
                 .build();
     }
 
-    public void makeMove(XoPlayerState player, int x, int y) {
-        if (winner == null) {
+    public void clickCell(XoPlayerState player, int x, int y) {
+        if (phase == XoGamePhase.IN_PROGRESS) {
             if (!(0 <= x && x < field.size() && 0 <= y && y < field.get(0).size())) {
                 throw new OnlinegamesException("Incorrect coordinates: x = " + x + ", y = " + y + ".");
             }
 
-            field.get(x).set(y, player.getPlayerSymbol());
+            if (playerToMove != player) {
+                player.sendMessageToFe(XoGameErrorDto.builder().errorDescription("It's not your turn.").build());
+            } else if (field.get(x).get(y) != null) {
+                player.sendMessageToFe(
+                        XoGameErrorDto.builder().errorDescription("The cell you clicked is not empty.").build()
+                );
+            } else {
+                field.get(x).set(y, player.getPlayerSymbol());
 
-            Character winnerSymbol = findWinnerSymbol();
-            if (winnerSymbol != null) {
-                playerToMove = null;
-                winner = players.stream()
-                        .filter(xoPlayerState -> winnerSymbol.equals(xoPlayerState.getPlayerSymbol()))
-                        .findFirst()
-                        .get();
-                phase = XoGamePhase.FINISHED;
+                Character winnerSymbol = findWinnerSymbol();
+                if (winnerSymbol != null) {
+                    playerToMove = null;
+                    winner = players.stream()
+                            .filter(xoPlayerState -> winnerSymbol.equals(xoPlayerState.getPlayerSymbol()))
+                            .findFirst()
+                            .get();
+                    phase = XoGamePhase.FINISHED;
+                } else if (isDraw()) {
+                    playerToMove = null;
+                    phase = XoGamePhase.FINISHED;
+                } else {
+                    playerToMove = getNextPlayerToMove();
+                }
+                broadcastGameState();
             }
+        } else {
+            broadcastGameState();
         }
-        broadcastGameState();
     }
 
     public void playerConnected(XoPlayerState player) {
@@ -111,6 +129,10 @@ public class XoGameState extends State {
             phase = XoGamePhase.IN_PROGRESS;
         }
         broadcastGameState();
+    }
+
+    private XoPlayerState getNextPlayerToMove() {
+        return players.stream().filter(player -> player != playerToMove).findFirst().get();
     }
 
     private void broadcastGameState() {
@@ -144,8 +166,8 @@ public class XoGameState extends State {
         for (int x = 0; x < dto.size(); x++) {
             for (int y = 0; y < dto.get(x).size(); y++) {
                 XoCellDto cellDto = dto.get(x).get(y);
-                cellDto.setXCoord(x);
-                cellDto.setXCoord(y);
+                cellDto.setX(x);
+                cellDto.setY(y);
             }
         }
 
@@ -174,8 +196,15 @@ public class XoGameState extends State {
         }
     }
 
+    private boolean isDraw() {
+        return !field.stream().flatMap(r -> r.stream()).anyMatch(Objects::isNull);
+    }
+
     private boolean allCellsAreOfSameSymbol(int x1, int y1, int x2, int y2, int x3, int y3) {
-        return field.get(x1).get(y1).equals(field.get(x2).get(y2))
+        return field.get(x1).get(y1) != null
+                && field.get(x2).get(y2) != null
+                && field.get(x3).get(y3) != null
+                && field.get(x1).get(y1).equals(field.get(x2).get(y2))
                 && field.get(x2).get(y2).equals(field.get(x3).get(y3));
     }
 
