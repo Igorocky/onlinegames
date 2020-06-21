@@ -87,10 +87,9 @@ public class XoGameState extends State {
     public void clickCell(XoPlayerState player, int x, int y) {
         if (phase == XoGamePhase.IN_PROGRESS) {
             if (!(0 <= x && x < field.size() && 0 <= y && y < field.get(0).size())) {
-                throw new OnlinegamesException("Incorrect coordinates: x = " + x + ", y = " + y + ".");
-            }
-
-            if (playerToMove != player) {
+                player.sendMessageToFe(XoGameErrorDto.builder()
+                        .errorDescription("Incorrect coordinates: x = " + x + ", y = " + y + ".").build());
+            } else if (playerToMove != player) {
                 player.sendMessageToFe(XoGameErrorDto.builder().errorDescription("It's not your turn.").build());
             } else if (field.get(x).get(y) != null) {
                 player.sendMessageToFe(
