@@ -6,6 +6,7 @@ import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.WebSocketSession;
 
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -33,8 +34,9 @@ public class XoPlayerState extends State {
     @Setter
     private XoGameState gameState;
 
-    @RpcMethod
-    public void connect() {
+    @Override
+    public synchronized void bind(WebSocketSession session) {
+        super.bind(session);
         gameState.playerConnected(this);
     }
 

@@ -2,7 +2,6 @@
 
 const XoGamePlayerView = ({joinId}) => {
     const backend = useBackend({stateId:joinId, onMessageFromBackend})
-    useEffect(() => backend.send("connect"), [])
     const [beState, setBeState] = useState(null)
 
     // const [beState, setBeState] = useState(BE_STATE)

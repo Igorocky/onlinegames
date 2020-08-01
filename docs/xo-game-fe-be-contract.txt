@@ -41,8 +41,6 @@ Join as a player:
     open web socket WS2 to /be/websocket/state
     send message to WS2:
         {"methodName":"-bindToState","params":{"stateId":"258ca5f3-53eb-40e0-af53-80fcb4781938"}}
-    send message to WS2:
-        {"methodName":"connect"}
     response message from WS2:
         {
           "type": "state",

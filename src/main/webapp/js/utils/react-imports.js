@@ -164,6 +164,8 @@ function useBackend({stateType, stateId, onBackendStateCreated, onMessageFromBac
                 setBeStateId(newStateId)
                 setCallBeStateCreated(true)
             })
+        } else if (!webSocket.current) {
+            sendMessageToBeState(BIND_TO_BE_STATE_METHOD_NAME, {stateId: beStateId})
         } else if (callBeStateCreated && onBackendStateCreated) {
             setCallBeStateCreated(false)
             onBackendStateCreated(backend)
