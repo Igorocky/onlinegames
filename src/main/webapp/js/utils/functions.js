@@ -11,6 +11,16 @@ function hasValue(variable) {
     return variable !== undefined && variable !== null
 }
 
+function ints(start, end) {
+    let i = start
+    const res = [];
+    while (i <= end) {
+        res.push(i)
+        i++
+    }
+    return res
+}
+
 function doPost(url, data, onSuccess) {
     $.ajax({
         type: "POST",

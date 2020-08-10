@@ -1,10 +1,25 @@
 "use strict";
 
-const XoGamePlayerView = ({joinId}) => {
-    const backend = useBackend({stateId:joinId, onMessageFromBackend})
-    const [beState, setBeState] = useState(null)
+const BE_STATE = {
+    "type": "state",
+    "phase": "IN_PROGRESS",
+    "field": [
+        {"symbol": "x", "x": 0, "y": 0},
+        {"symbol": "x", "x": 0, "y": 2},
+        {"symbol": "o", "x": 1, "y": 0},
+        {"symbol": "x", "x": 1, "y": 1},
+        {"symbol": "o", "x": 2, "y": 0}
+    ],
+    "players": [{"playerId": 1, "connected": true, "symbol": "x"}, {"playerId": 2, "connected": true, "symbol": "o"}],
+    "currentPlayerId": 2,
+    "playerIdToMove": 2
+}
 
-    // const [beState, setBeState] = useState(BE_STATE)
+const XoGamePlayerView = ({joinId}) => {
+    // const backend = useBackend({stateId:joinId, onMessageFromBackend})
+    // const [beState, setBeState] = useState(null)
+
+    const [beState, setBeState] = useState(BE_STATE)
 
     function onMessageFromBackend(msg) {
         if (msg.type && msg.type == "state") {
@@ -81,6 +96,9 @@ const XoGamePlayerView = ({joinId}) => {
             }
         }
         beState.field.forEach(cellDto => tableData[cellDto.x][cellDto.y] = cellDto)
+
+        return renderSvgField()
+
         return RE.table({style:{borderCollapse: "collapse"}},
             RE.tbody({},
                 tableData.map((row, x) => RE.tr({key:x},
@@ -96,6 +114,39 @@ const XoGamePlayerView = ({joinId}) => {
                     ))
                 ))
             )
+        )
+    }
+
+    /**
+     * Note: visual cell size is ex.length()*stepSize
+     * @param {string} key
+     * @param {Vector} ex
+     * @param {number} stepSize
+     * @param {number} numOfLines
+     * @param {number} height
+     * @param {Object} props
+     */
+    function renderVerticalGrid({key, ex, stepSize, numOfLines, height, props}) {
+        const ey = ex.rotate(90)
+        return ints(0, numOfLines-1)
+            .map(lineNum => ex.scale(lineNum*stepSize))
+            .map(eyTranslation => ey.translate(eyTranslation))
+            .map(eyi => eyi.scale(height))
+            .map((eyLine,idx) => eyLine.toSvgLine({key: `${key}-${idx}`, ...(props?props:{})}))
+    }
+
+    function renderSvgField() {
+        const background = SVG.rect({key:'background', x:-1000, y:-1000, width:2000, height:2000, fill:"lightgrey"})
+
+        const ex = SVG_EX.scale(10)
+        const ey = SVG_EY.scale(10)
+
+        const maxX = ex.length()*2
+        const gridLineStrokeWidth = ex.length()*0.05;
+        return RE.svg({width:300, height:300, minX:-maxX, minY:-maxX, xWidth:maxX*2, yWidth:maxX*2},
+            background,
+            svgLine(origin, ex, {key:'ex', stroke:'green', strokeWidth: gridLineStrokeWidth}),
+            svgLine(origin, ey, {key:'ey', stroke:'blue', strokeWidth: gridLineStrokeWidth}),
         )
     }
 

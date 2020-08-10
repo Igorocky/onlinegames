@@ -52,7 +52,9 @@ function gridFactory(direction, justify, alignItems) {
 
 const RE = {
     div: reFactory('div'),
-    svg: reFactory('svg'),
+    svg: ({width, height, minX, minY, xWidth, yWidth}, ...children) => re('svg', {width, height, viewBox:`${minX} ${minY} ${xWidth} ${yWidth}`},
+        children
+    ),
     img: reFactory('img'),
     span: reFactory('span'),
     table: reFactory('table'),
