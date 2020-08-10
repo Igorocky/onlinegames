@@ -1,6 +1,5 @@
 package org.igor.onlinegames.xogame.manager;
 
-import org.igor.onlinegames.exceptions.OnlinegamesException;
 import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
 import org.igor.onlinegames.websocket.StateManager;
@@ -15,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -22,12 +22,14 @@ import java.util.stream.Collectors;
 
 import static org.igor.onlinegames.common.OnlinegamesUtils.nullSafeGetter;
 
+// TODO: 10.08.2020 replace Arrays.asList with loops
+
 @Component("XoGame")
 @Scope("prototype")
 public class XoGameState extends State {
     private XoGamePhase phase;
     private List<XoPlayerState> players;
-    private List<List<Character>> field;
+    private Character[][] field;
     private XoPlayerState playerToMove;
     private XoPlayerState winner;
 
@@ -57,13 +59,7 @@ public class XoGameState extends State {
 
         playerToMove = xPlayer;
 
-        field = new ArrayList<>(3);
-        for (int x = 0; x < 3; x++) {
-            field.add(new ArrayList<>());
-            for (int y = 0; y < 3; y++) {
-                field.get(x).add(null);
-            }
-        }
+        field = new Character[3][3];
     }
 
     @RpcMethod
@@ -86,17 +82,17 @@ public class XoGameState extends State {
 
     public void clickCell(XoPlayerState player, int x, int y) {
         if (phase == XoGamePhase.IN_PROGRESS) {
-            if (!(0 <= x && x < field.size() && 0 <= y && y < field.get(0).size())) {
+            if (!(0 <= x && x < field.length && 0 <= y && y < field[0].length)) {
                 player.sendMessageToFe(XoGameErrorDto.builder()
                         .errorDescription("Incorrect coordinates: x = " + x + ", y = " + y + ".").build());
             } else if (playerToMove != player) {
                 player.sendMessageToFe(XoGameErrorDto.builder().errorDescription("It's not your turn.").build());
-            } else if (field.get(x).get(y) != null) {
+            } else if (field[x][y] != null) {
                 player.sendMessageToFe(
                         XoGameErrorDto.builder().errorDescription("The cell you clicked is not empty.").build()
                 );
             } else {
-                field.get(x).set(y, player.getPlayerSymbol());
+                field[x][y] = player.getPlayerSymbol();
 
                 Character winnerSymbol = findWinnerSymbol();
                 if (winnerSymbol != null) {
@@ -151,60 +147,48 @@ public class XoGameState extends State {
                 .collect(Collectors.toList());
     }
 
-    private List<List<XoCellDto>> createFieldDto(List<List<Character>> field) {
-        List<List<XoCellDto>> dto = field.stream()
-                .map(row -> row.stream()
-                        .map(character -> XoCellDto.builder()
-                                .symbol(character)
-                                .build()
-                        )
-                        .collect(Collectors.toList())
-                )
-                .collect(Collectors.toList());
-
-        for (int x = 0; x < dto.size(); x++) {
-            for (int y = 0; y < dto.get(x).size(); y++) {
-                XoCellDto cellDto = dto.get(x).get(y);
-                cellDto.setX(x);
-                cellDto.setY(y);
+    private List<XoCellDto> createFieldDto(Character[][] field) {
+        final ArrayList<XoCellDto> cellsDto = new ArrayList<>();
+        for (int x = 0; x < field.length; x++) {
+            for (int y = 0; y < field[x].length; y++) {
+                cellsDto.add(XoCellDto.builder().x(x).y(y).symbol(field[x][y]).build());
             }
         }
-
-        return dto;
+        return cellsDto;
     }
 
     private Character findWinnerSymbol() {
         if (allCellsAreOfSameSymbol(0, 0, 0, 1, 0, 2)) {
-            return field.get(0).get(0);
+            return field[0][0];
         } else if (allCellsAreOfSameSymbol(1, 0, 1, 1, 1, 2)) {
-            return field.get(1).get(0);
+            return field[1][0];
         } else if (allCellsAreOfSameSymbol(2, 0, 2, 1, 2, 2)) {
-            return field.get(2).get(0);
+            return field[2][0];
         } else if (allCellsAreOfSameSymbol(0, 0, 1, 0, 2, 0)) {
-            return field.get(0).get(0);
+            return field[0][0];
         } else if (allCellsAreOfSameSymbol(0, 1, 1, 1, 2, 1)) {
-            return field.get(0).get(1);
+            return field[0][1];
         } else if (allCellsAreOfSameSymbol(0, 2, 1, 2, 2, 2)) {
-            return field.get(0).get(2);
+            return field[0][2];
         } else if (allCellsAreOfSameSymbol(0, 0, 1, 1, 2, 2)) {
-            return field.get(0).get(0);
+            return field[0][0];
         } else if (allCellsAreOfSameSymbol(0, 2, 1, 1, 2, 0)) {
-            return field.get(0).get(2);
+            return field[0][2];
         } else {
             return null;
         }
     }
 
     private boolean isDraw() {
-        return !field.stream().flatMap(r -> r.stream()).anyMatch(Objects::isNull);
+        return !Arrays.asList(field).stream().flatMap(r -> Arrays.asList(r).stream()).anyMatch(Objects::isNull);
     }
 
     private boolean allCellsAreOfSameSymbol(int x1, int y1, int x2, int y2, int x3, int y3) {
-        return field.get(x1).get(y1) != null
-                && field.get(x2).get(y2) != null
-                && field.get(x3).get(y3) != null
-                && field.get(x1).get(y1).equals(field.get(x2).get(y2))
-                && field.get(x2).get(y2).equals(field.get(x3).get(y3));
+        return field[x1][y1] != null
+                && field[x2][y2] != null
+                && field[x3][y3] != null
+                && field[x1][y1].equals(field[x2][y2])
+                && field[x2][y2].equals(field[x3][y3]);
     }
 
     @Override

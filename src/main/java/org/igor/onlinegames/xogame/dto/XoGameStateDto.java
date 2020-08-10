@@ -11,7 +11,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class XoGameStateDto implements XoGameDto {
     private XoGamePhase phase;
-    private List<List<XoCellDto>> field;
+    private List<XoCellDto> field;
     private List<XoPlayerDto> players;
     private Integer currentPlayerId;
     private Integer playerIdToMove;
