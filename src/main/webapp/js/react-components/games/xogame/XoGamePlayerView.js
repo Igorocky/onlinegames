@@ -73,14 +73,25 @@ const XoGamePlayerView = ({joinId}) => {
     }
 
     function renderField() {
+        const tableData = []
+        for (let x = 0; x < 3; x++) {
+            tableData.push([])
+            for (let y = 0; y < 3; y++) {
+                tableData[x].push(null)
+            }
+        }
+        beState.field.forEach(cellDto => tableData[cellDto.x][cellDto.y] = cellDto)
         return RE.table({style:{borderCollapse: "collapse"}},
             RE.tbody({},
-                beState.field.map((row, rowIdx) => RE.tr({key:rowIdx},
-                    row.map((cell, colIdx) => RE.td(
-                        {key:colIdx, style:{border: "1px solid black", width:"100px", height:"100px"},
-                        onClick: () => cellClicked({x:cell.x, y:cell.y})},
+                tableData.map((row, x) => RE.tr({key:x},
+                    row.map((cell, y) => RE.td(
+                        {
+                            key:y,
+                            style:{border: "1px solid black", width:"100px", height:"100px"},
+                            onClick: () => cellClicked({x, y})
+                        },
                         RE.span({style:{fontSize: "80px", marginLeft:"25px"}},
-                            cell.symbol ? cell.symbol : ""
+                            cell ? cell.symbol : ""
                         )
                     ))
                 ))
