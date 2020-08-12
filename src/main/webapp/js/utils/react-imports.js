@@ -52,7 +52,12 @@ function gridFactory(direction, justify, alignItems) {
 
 const RE = {
     div: reFactory('div'),
-    svg: ({width, height, minX, minY, xWidth, yWidth}, ...children) => re('svg', {width, height, viewBox:`${minX} ${minY} ${xWidth} ${yWidth}`},
+    svg: ({width, height, boundaries}, ...children) => re('svg',
+        {
+            width,
+            height,
+            viewBox: `${boundaries.minX} ${boundaries.minY} ${boundaries.maxX - boundaries.minX} ${boundaries.maxY - boundaries.minY}`
+        },
         children
     ),
     img: reFactory('img'),

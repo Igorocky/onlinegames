@@ -1,7 +1,21 @@
 "use strict";
 
-function degToRad(deg) {
-    return deg/180*Math.PI
+class SvgBoundaries {
+    constructor(minX, maxX, minY, maxY) {
+        this.minX = minX
+        this.maxX = maxX
+        this.minY = minY
+        this.maxY = maxY
+    }
+
+    addAbsoluteMargin(margin) {
+        return new SvgBoundaries(
+            this.minX - margin,
+            this.maxX + margin,
+            this.minY - margin,
+            this.maxY + margin,
+        )
+    }
 }
 
 class Point {
@@ -11,12 +25,12 @@ class Point {
     }
 
     /**
-     * Rotates length of a vector which starts at (0,0) and ends at this point.
+     * Returns length of a vector which starts at (0,0) and ends at this point.
      * @returns {number}
      */
-    // length() {
-    //     return Math.sqrt(this.x**2 + this.y**2)
-    // }
+    length() {
+        return Math.sqrt(this.x**2 + this.y**2)
+    }
 
     /**
      * @param {Point} otherPoint
@@ -77,6 +91,10 @@ class Vector {
         this.end = end
     }
 
+    length() {
+        return this.end.minus(this.start).length()
+    }
+
     /**
      * Returns a new vector obtained by rotating this vector around its start by 'deg' degree.
      * @param {number} deg
@@ -112,7 +130,7 @@ class Vector {
      */
     translate(vec) {
         //todo: optimize performance
-        const delta = this.end.minus(this.start)
+        const delta = vec.end.minus(vec.start)
         return new Vector(
             this.start.plus(delta),
             this.end.plus(delta)
@@ -134,6 +152,18 @@ class Vector {
         )
     }
 
+    /**
+     * @return {SvgBoundaries} SvgBoundaries
+     */
+    boundaries() {
+        return new SvgBoundaries(
+            Math.min(this.start.x, this.end.x),
+            Math.max(this.start.x, this.end.x),
+            Math.min(this.start.y, this.end.y),
+            Math.max(this.start.y, this.end.y),
+        )
+    }
+
     toSvgLine(props) {
         return svgLine({from:this.start, to:this.end, props})
     }
@@ -141,6 +171,22 @@ class Vector {
 
 const SVG_EX = new Vector(new Point(0,0), new Point(1,0))
 const SVG_EY = new Vector(new Point(0,0), new Point(0,-1))
+
+function degToRad(deg) {
+    return deg/180*Math.PI
+}
+
+/**
+ * @param {SvgBoundaries[]} boundariesList
+ */
+function mergeSvgBoundaries(boundariesList) {
+    return boundariesList.reduce((prev, curr) => new SvgBoundaries(
+            Math.min(prev.minX, curr.minX),
+            Math.max(prev.maxX, curr.maxX),
+            Math.min(prev.minY, curr.minY),
+            Math.max(prev.maxY, curr.maxY),
+    ))
+}
 
 /**
  * Returns SVG line object.
@@ -166,6 +212,7 @@ function assertEquals(expected, actual) {
 }
 
 function assertNumbersEqual(expected, actual, precision) {
+    precision = precision??0.0000000001
     if (Math.abs(expected - actual) > precision) {
         throw new Error(`Assertion failed: expected ${JSON.stringify(expected)} but was ${JSON.stringify(actual)}.`)
     }
@@ -174,6 +221,8 @@ function assertNumbersEqual(expected, actual, precision) {
 const TESTS = [
     'testPointMove',
     'testVectorRotate',
+    'testVectorScale',
+    'testVectorTranslate',
 ]
 
 function testPointMove() {
@@ -193,20 +242,36 @@ function testPointMove() {
     assertEquals(0, b.x)
     assertEquals(-4, b.y)
 
-    const precision = 0.0000001
     const distC = 7
     const c = origin.move(ex.rotate(45), distC)
     assertTrue(c.x > 0)
     assertTrue(c.y < 0)
-    assertNumbersEqual(distC, (c.x**2+c.y**2)**0.5, precision)
+    assertNumbersEqual(distC, (c.x**2+c.y**2)**0.5)
 }
 
 function testVectorRotate() {
-    const precision = 0.0000001
     const v1 = new Vector(new Point(0,0), new Point(5,0))
     const v1R90 = v1.rotate(90)
-    assertNumbersEqual(0, v1R90.x, precision)
-    assertNumbersEqual(-5, v1R90.y, precision)
+    assertNumbersEqual(0, v1R90.x)
+    assertNumbersEqual(-5, v1R90.y)
+}
+
+function testVectorScale() {
+    const v1 = new Vector(new Point(1,2), new Point(3,4))
+    const v1Scaled = v1.scale(5)
+    assertNumbersEqual(1, v1Scaled.start.x)
+    assertNumbersEqual(2, v1Scaled.start.y)
+    assertNumbersEqual(11, v1Scaled.end.x)
+    assertNumbersEqual(12, v1Scaled.end.y)
+}
+
+function testVectorTranslate() {
+    const v1 = new Vector(new Point(1,2), new Point(3,4))
+    const v1Translated = v1.translate(SVG_EX)
+    assertNumbersEqual(2, v1Translated.start.x)
+    assertNumbersEqual(2, v1Translated.start.y)
+    assertNumbersEqual(4, v1Translated.end.x)
+    assertNumbersEqual(4, v1Translated.end.y)
 }
 
 TESTS.forEach(test => window[test]())
