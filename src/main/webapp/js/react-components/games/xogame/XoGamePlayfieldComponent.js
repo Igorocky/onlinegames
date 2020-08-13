@@ -65,17 +65,31 @@ const XoGamePlayfieldComponent = ({tableData, onCellClicked}) => {
     }
 
     function renderCell({ex, cellDto, cellSize}) {
-        if (cellDto) {
-            return [
+        const cellAbsoluteSize = ex.length()*cellSize
+        const result = []
+        if (cellDto.symbol) {
+            result.push(
                 ...renderSymbol({
                     symbol: cellDto.symbol,
                     cellSize,
                     centerEx: ex.translate(null, cellSize / 2).translate(ex.rotate(90), cellSize / 2),
-                }),
-            ]
-        } else {
-            return []
+                })
+            )
         }
+        result.push(
+            SVG.rect({
+                key: 'cell-click-pane-' + ex.start.x + '-' + ex.start.y,
+                x: ex.start.x,
+                y: ex.start.y-cellAbsoluteSize,
+                width: cellAbsoluteSize,
+                height: cellAbsoluteSize,
+                stroke: 'none',
+                strokeWidth: 1,
+                fill: 'transparent',
+                onClick: () => onCellClicked({x:cellDto.x, y:cellDto.y})
+            })
+        )
+        return result
     }
 
     function renderCells({ex, cellSize, tableData}) {
@@ -137,7 +151,7 @@ const XoGamePlayfieldComponent = ({tableData, onCellClicked}) => {
             stepSize: cellSize,
             colNum: 3,
             rowNum: 3,
-            props: {stroke:'green', strokeWidth: 0.1}
+            props: {stroke:'white', strokeWidth: 0.2}
         })
 
         return RE.svg({width: playFieldSize, height: playFieldSize, boundaries: grid.boundaries.addAbsoluteMargin(3)},
