@@ -36,7 +36,7 @@ class Point {
      * @param {Point} otherPoint
      * @returns {Point}
      */
-    plus(otherPoint) {
+    add(otherPoint) {
         return new Point(this.x+otherPoint.x, this.y+otherPoint.y)
     }
 
@@ -101,10 +101,9 @@ class Vector {
      * @returns {Vector}
      */
     rotate(deg) {
-        //todo: optimize performance
         return new Vector(
             this.start,
-            this.start.plus(
+            this.start.add(
                 this.end.minus(this.start).rotate(deg)
             )
         )
@@ -114,27 +113,34 @@ class Vector {
      * @returns {Vector}
      */
     normalize() {
-        //todo: optimize performance
         const local = this.end.minus(this.start)
         const len = local.length()
         const normalizedLocal = local.scale(1/len)
         return new Vector(
             this.start,
-            this.start.plus(normalizedLocal)
+            this.start.add(normalizedLocal)
         )
     }
 
     /**
-     * @param {Vector} vec
+     * @param {Vector} [vec]
+     * @param {number} [dist]
      * @returns {Vector}
      */
-    translate(vec) {
-        //todo: optimize performance
-        const delta = vec.end.minus(vec.start)
+    translate(vec, dist) {
+        vec = vec??this
+        let delta = vec.end.minus(vec.start)
+        if (hasValue(dist)) {
+            delta = delta.scale(dist)
+        }
         return new Vector(
-            this.start.plus(delta),
-            this.end.plus(delta)
+            this.start.add(delta),
+            this.end.add(delta)
         )
+    }
+
+    translateTo(point) {
+        return this.translate(new Vector(this.start, point))
     }
 
     /**
@@ -143,10 +149,9 @@ class Vector {
      * @returns {Vector}
      */
     scale(factor) {
-        //todo: optimize performance
         return new Vector(
             this.start,
-            this.start.plus(
+            this.start.add(
                 this.end.minus(this.start).scale(factor)
             )
         )
@@ -196,6 +201,17 @@ function mergeSvgBoundaries(boundariesList) {
  */
 function svgLine({from, to, props}) {
     return SVG.line({x1:from.x, y1:from.y, x2:to.x, y2:to.y, ...(props??{})})
+}
+
+/**
+ * @param {string} key
+ * @param {Point} c
+ * @param {number} r
+ * @param {Object} props
+ */
+function svgCircle({key, c, r, props}) {
+    props = props??{}
+    return SVG.circle({key, cx:c.x, cy:c.y, r, ...props})
 }
 
 //tests
@@ -272,6 +288,13 @@ function testVectorTranslate() {
     assertNumbersEqual(2, v1Translated.start.y)
     assertNumbersEqual(4, v1Translated.end.x)
     assertNumbersEqual(4, v1Translated.end.y)
+
+    const v2 = SVG_EX
+    const v2Translated = v2.translate(null,0)
+    assertNumbersEqual(0, v2Translated.start.x)
+    assertNumbersEqual(0, v2Translated.start.y)
+    assertNumbersEqual(1, v2Translated.end.x)
+    assertNumbersEqual(0, v2Translated.end.y)
 }
 
 TESTS.forEach(test => window[test]())

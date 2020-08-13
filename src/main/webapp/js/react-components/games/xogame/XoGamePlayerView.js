@@ -97,7 +97,7 @@ const XoGamePlayerView = ({joinId}) => {
         }
         beState.field.forEach(cellDto => tableData[cellDto.x][cellDto.y] = cellDto)
 
-        return re(XoGamePlayfieldComponent, {})
+        return re(XoGamePlayfieldComponent, {tableData})
 
         return RE.table({style:{borderCollapse: "collapse"}},
             RE.tbody({},
