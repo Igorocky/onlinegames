@@ -1,6 +1,6 @@
 "use strict";
 
-const XoGamePlayfieldComponent = ({tableData, onCellClicked}) => {
+const XoGamePlayfieldComponent = ({size, tableData, onCellClicked}) => {
 
     /**
      * @typedef {Object} SvgElements
@@ -140,7 +140,6 @@ const XoGamePlayfieldComponent = ({tableData, onCellClicked}) => {
     }
 
     function renderSvgField() {
-        const playFieldSize = 300
         const background = SVG.rect({key:'background', x:-1000, y:-1000, width:2000, height:2000, fill:"lightgrey"})
 
         const cellSize = 10
@@ -154,7 +153,7 @@ const XoGamePlayfieldComponent = ({tableData, onCellClicked}) => {
             props: {stroke:'white', strokeWidth: 0.2}
         })
 
-        return RE.svg({width: playFieldSize, height: playFieldSize, boundaries: grid.boundaries.addAbsoluteMargin(3)},
+        return RE.svg({width: size, height: size, boundaries: grid.boundaries.addAbsoluteMargin(3)},
             background,
             ...grid.svgElems,
             ...renderCells({ex, cellSize, tableData})

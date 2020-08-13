@@ -21,6 +21,15 @@ function ints(start, end) {
     return res
 }
 
+function saveToLocalStorage(localStorageKey, value) {
+    window.localStorage.setItem(localStorageKey, JSON.stringify(value))
+}
+
+function readFromLocalStorage(localStorageKey, defaultValue) {
+    const item = window.localStorage.getItem(localStorageKey)
+    return hasValue(item) ? JSON.parse(item) : defaultValue
+}
+
 function doPost(url, data, onSuccess) {
     $.ajax({
         type: "POST",

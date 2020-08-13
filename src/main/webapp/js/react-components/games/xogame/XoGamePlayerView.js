@@ -18,8 +18,24 @@ const BE_STATE = {
 const XoGamePlayerView = ({joinId}) => {
     // const backend = useBackend({stateId:joinId, onMessageFromBackend})
     // const [beState, setBeState] = useState(null)
-
     const [beState, setBeState] = useState(BE_STATE)
+
+    const playFieldSizePerCellKey = 'XoGamePlayerView.playFieldSizePerCell'
+    const PLAY_FIELD_SIZE_PER_CELL_MIN = 20
+    const PLAY_FIELD_SIZE_PER_CELL_MAX = 300
+    const [playFieldSizePerCell, setPlayFieldSizePerCell] = useState(() =>
+        validatePlayFieldSizePerCell(readFromLocalStorage(playFieldSizePerCellKey, 100))
+    )
+
+    function validatePlayFieldSizePerCell(newValue) {
+        if (newValue < PLAY_FIELD_SIZE_PER_CELL_MIN) {
+            return PLAY_FIELD_SIZE_PER_CELL_MIN
+        } else if (newValue > PLAY_FIELD_SIZE_PER_CELL_MAX) {
+            return PLAY_FIELD_SIZE_PER_CELL_MAX
+        } else {
+            return newValue
+        }
+    }
 
     function onMessageFromBackend(msg) {
         if (msg.type && msg.type == "state") {
@@ -51,11 +67,11 @@ const XoGamePlayerView = ({joinId}) => {
     }
 
     function getWinner() {
-        return beState.players.filter(player => player.playerId == beState.winnerId)[0]
+        return beState.players.find(player => player.playerId == beState.winnerId)
     }
 
     function getCurrentPlayer() {
-        return beState.players.filter(player => player.playerId == beState.currentPlayerId)[0]
+        return beState.players.find(player => player.playerId == beState.currentPlayerId)
     }
 
     function getOpponents() {
@@ -87,6 +103,14 @@ const XoGamePlayerView = ({joinId}) => {
         backend.send("clickCell", {x,y})
     }
 
+    function zoomField(factor) {
+        setPlayFieldSizePerCell(oldValue => {
+            const newValue = validatePlayFieldSizePerCell(oldValue * factor)
+            saveToLocalStorage(playFieldSizePerCellKey, newValue)
+            return newValue
+        })
+    }
+
     function renderField() {
         const tableData = []
         for (let x = 0; x < 3; x++) {
@@ -99,10 +123,29 @@ const XoGamePlayerView = ({joinId}) => {
             tableData[cellDto.x][cellDto.y] = {...tableData[cellDto.x][cellDto.y], ...cellDto}
         })
 
-        return re(XoGamePlayfieldComponent, {
-            tableData,
-            onCellClicked: cellClicked
-        })
+        return RE.Container.row.left.top({},{},
+            re(XoGamePlayfieldComponent, {
+                size: playFieldSizePerCell*3,
+                tableData,
+                onCellClicked: cellClicked
+            }),
+            RE.ButtonGroup({variant:"contained", size:"small", orientation:"vertical"},
+                RE.Button({
+                        style:{},
+                        disabled: playFieldSizePerCell == PLAY_FIELD_SIZE_PER_CELL_MAX,
+                        onClick: () => zoomField(1.1),
+                    },
+                    RE.Icon({}, 'zoom_in')
+                ),
+                RE.Button({
+                        style:{},
+                        disabled: playFieldSizePerCell == PLAY_FIELD_SIZE_PER_CELL_MIN,
+                        onClick: () => zoomField(1/1.1),
+                    },
+                    RE.Icon({}, 'zoom_out')
+                )
+            )
+        )
     }
 
     return RE.Container.col.top.center({style:{marginTop:"100px"}},{},
