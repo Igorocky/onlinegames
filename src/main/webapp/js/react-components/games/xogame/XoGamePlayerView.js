@@ -1,24 +1,8 @@
 "use strict";
 
-const BE_STATE = {
-    "type": "state",
-    "phase": "IN_PROGRESS",
-    "field": [
-        {"symbol": "x", "x": 0, "y": 0},
-        {"symbol": "x", "x": 0, "y": 2},
-        {"symbol": "o", "x": 1, "y": 0},
-        {"symbol": "x", "x": 1, "y": 1},
-        {"symbol": "o", "x": 2, "y": 0}
-    ],
-    "players": [{"playerId": 1, "connected": true, "symbol": "x"}, {"playerId": 2, "connected": true, "symbol": "o"}],
-    "currentPlayerId": 2,
-    "playerIdToMove": 2
-}
-
 const XoGamePlayerView = ({joinId}) => {
-    // const backend = useBackend({stateId:joinId, onMessageFromBackend})
-    // const [beState, setBeState] = useState(null)
-    const [beState, setBeState] = useState(BE_STATE)
+    const backend = useBackend({stateId:joinId, onMessageFromBackend})
+    const [beState, setBeState] = useState(null)
 
     const playFieldSizePerCellKey = 'XoGamePlayerView.playFieldSizePerCell'
     const PLAY_FIELD_SIZE_PER_CELL_MIN = 20
