@@ -13,7 +13,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class WebSocketHandler extends TextWebSocketHandler {
-    public static final String STATE_ID = "stateId";
+    public static final String STATE_ID = "STATE_ID";
+    public static final String USER_DATA = "USER_DATA";
     @Autowired
     private StateManager stateManager;
     @Autowired
