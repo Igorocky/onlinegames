@@ -46,11 +46,12 @@ public class RpcDispatcher {
         }
     }
 
-    public Object dispatchRpcCall(String methodName, JsonNode passedParams) throws IOException, InvocationTargetException, IllegalAccessException {
-        return dispatchRpcCall(methodName, passedParams, methodMap);
+    public Object dispatchRpcCall(String methodName, JsonNode passedParams, RpcAutowiredParamsLookup paramsLookup) throws IOException, InvocationTargetException, IllegalAccessException {
+        return dispatchRpcCall(methodName, passedParams, methodMap, paramsLookup);
     }
 
-    public Object dispatchRpcCall(String methodName, JsonNode passedParams, Map<String, Pair<Object, Method>> methodMap) throws IOException, InvocationTargetException, IllegalAccessException {
+    public Object dispatchRpcCall(String methodName, JsonNode passedParams, Map<String, Pair<Object, Method>> methodMap,
+                                  RpcAutowiredParamsLookup paramsLookup) throws IOException, InvocationTargetException, IllegalAccessException {
         Pair<Object, Method> objectMethodPair = methodMap.get(methodName);
         if (objectMethodPair == null) {
             throw new OnlinegamesException("Could not find RPC method with name " + methodName);
@@ -60,7 +61,7 @@ public class RpcDispatcher {
         validatePassedParams(methodName, methodParameters, passedParams);
         return method.invoke(
                 objectMethodPair.getLeft(),
-                prepareArguments(methodName, methodParameters, passedParams)
+                prepareArguments(methodName, methodParameters, passedParams, paramsLookup)
         );
     }
 
@@ -93,7 +94,8 @@ public class RpcDispatcher {
 
     private Object[] prepareArguments(String methodName,
                                       Parameter[] declaredParams,
-                                      JsonNode passedParams) throws IOException {
+                                      JsonNode passedParams,
+                                      RpcAutowiredParamsLookup paramsLookup) throws IOException {
         Object[] arguments = new Object[declaredParams.length];
         for (int i = 0; i < declaredParams.length; i++) {
             Parameter declaredParam = declaredParams[i];
@@ -108,11 +110,18 @@ public class RpcDispatcher {
                 arguments[i] = parseParam(methodName, declaredParam, passedParam);
             } else {
                 Default defaultAnnotation = declaredParam.getAnnotation(Default.class);
-                if (defaultAnnotation!=null) {
+                if (defaultAnnotation != null) {
                     arguments[i] = objectMapper.readValue(defaultAnnotation.value(), (Class) declaredParam.getType());
                 } else {
-                    throw new OnlinegamesException("Rpc call error: required parameter '" + paramName
-                            + "' is not specified for method " + methodName + ".");
+                    if (paramsLookup != null) {
+                        Object lookedUpParam = paramsLookup.getByClass(paramType);
+                        if (lookedUpParam != null) {
+                            arguments[i] = lookedUpParam;
+                        } else {
+                            throw new OnlinegamesException("Rpc call error: required parameter '" + paramName
+                                    + "' is not specified for method " + methodName + ".");
+                        }
+                    }
                 }
             }
         }

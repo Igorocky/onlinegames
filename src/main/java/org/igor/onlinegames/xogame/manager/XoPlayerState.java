@@ -1,52 +1,40 @@
 package org.igor.onlinegames.xogame.manager;
 
-import lombok.Getter;
-import lombok.Setter;
-import org.igor.onlinegames.rpc.RpcMethod;
-import org.igor.onlinegames.websocket.State;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
+import lombok.extern.java.Log;
+import org.igor.onlinegames.model.UserData;
+import org.igor.onlinegames.websocket.StateManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.io.IOException;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.function.Supplier;
 
-@Component(XoPlayerState.XO_PLAYER)
-@Scope("prototype")
-public class XoPlayerState extends State {
-    public static final String XO_PLAYER = "XoPlayer";
+@Log
+@Data
+public class XoPlayerState {
+    private static final Logger LOG = LoggerFactory.getLogger(XoPlayerState.class);
 
-    @Setter @Getter
+    private final ObjectMapper mapper;
+    private Instant createdAt = Instant.now();
+    private Instant lastInMsgAt;
+    private Instant lastOutMsgAt;
     private boolean connected;
-
-    @Setter @Getter
     private boolean gameOwner;
-
-    @Setter @Getter
     private UUID joinId;
-
-    @Setter @Getter
     private int playerId;
-
-    @Setter @Getter
     private Character playerSymbol;
+    private UserData userData;
+    private boolean optional;
+    private WebSocketSession session;
 
-    @Setter
-    private XoGameState gameState;
-
-    @Override
-    public synchronized void bind(WebSocketSession session) {
-        super.bind(session);
-        gameState.playerConnected(this);
-    }
-
-    @RpcMethod
-    public void clickCell(int x, int y) {
-        gameState.clickCell(this, x, y);
-    }
-
-    public void sendMessageToFe(Object msg) {
-        super.sendMessageToFe(msg);
+    public XoPlayerState(ObjectMapper mapper) {
+        this.mapper = mapper;
     }
 
     public <T> T ifGameOwner(Supplier<T> exp) {
@@ -57,8 +45,12 @@ public class XoPlayerState extends State {
         }
     }
 
-    @Override
-    protected Object getViewRepresentation() {
-        return "joinId = " + joinId;
+    public void sendMessageToFe(Object msg) {
+        setLastOutMsgAt(Instant.now());
+        try {
+            session.sendMessage(new TextMessage(mapper.writeValueAsString(msg)));
+        } catch (IOException ex) {
+            LOG.error(ex.getMessage(), ex);
+        }
     }
 }

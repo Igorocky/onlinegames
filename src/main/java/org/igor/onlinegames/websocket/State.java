@@ -1,5 +1,6 @@
 package org.igor.onlinegames.websocket;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
@@ -15,6 +16,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public abstract class State {
     private static final Logger LOG = LoggerFactory.getLogger(StateManager.class);
@@ -24,6 +26,7 @@ public abstract class State {
     private Instant lastOutMsgAt;
     private List<WebSocketSession> sessions = new ArrayList<>();
     private Clock clock = Clock.systemUTC();
+    private UUID stateId;
 
     @Autowired
     private ObjectMapper mapper;
@@ -36,7 +39,7 @@ public abstract class State {
         return methodMap;
     }
 
-    public synchronized void bind(WebSocketSession session) {
+    public synchronized void bind(WebSocketSession session, JsonNode bindParams) {
         sessions.add(session);
     }
 
@@ -88,6 +91,14 @@ public abstract class State {
         this.lastOutMsgAt = lastOutMsgAt;
     }
 
+    public UUID getStateId() {
+        return stateId;
+    }
+
+    public void setStateId(UUID stateId) {
+        this.stateId = stateId;
+    }
+
     protected synchronized void sendMessageToFe(Object msg) {
         if (!sessions.isEmpty()) {
             setLastOutMsgAt(clock.instant());
@@ -102,4 +113,5 @@ public abstract class State {
     }
 
     abstract protected Object getViewRepresentation();
+    abstract protected void init(JsonNode args);
 }

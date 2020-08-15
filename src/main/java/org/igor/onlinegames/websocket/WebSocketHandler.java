@@ -7,6 +7,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -33,14 +34,15 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 if (oldStateId != null) {
                     stateManager.getBackendState(oldStateId).unbind(session);
                 }
-                stateManager.getBackendState(newStateId).bind(session);
+                stateManager.getBackendState(newStateId).bind(session, request.getParams().get("bindParams"));
                 session.getAttributes().put(STATE_ID, newStateId);
             }
+            stateManager.getBackendState(newStateId).setLastInMsgAt(Instant.now());
         } else {
             final UUID stateId = stateIdOpt.get();
             executorService.submit(() -> {
                 Object resp = stateManager.invokeMethodOnBackendState(
-                        stateId, request.getMethodName(), request.getParams()
+                        stateId, request.getMethodName(), request.getParams(), session
                 );
                 if (resp != null) {
                     stateManager.getBackendState(stateId).sendMessageToFe(resp);

@@ -2,6 +2,8 @@ package org.igor.onlinegames.websocket;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.igor.onlinegames.exceptions.OnlinegamesException;
+import org.igor.onlinegames.rpc.Default;
+import org.igor.onlinegames.rpc.RpcAutowiredParamsLookup;
 import org.igor.onlinegames.rpc.RpcDispatcher;
 import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.rpc.RpcMethodsCollection;
@@ -10,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.WebSocketSession;
 
 import java.time.Clock;
 import java.util.Comparator;
@@ -34,11 +37,15 @@ public class StateManager {
     private Clock clock = Clock.systemUTC();
 
     @RpcMethod
-    public UUID createNewBackendState(String stateType) {
+    public UUID createNewBackendState(String stateType, @Default("null") JsonNode initParams) {
         UUID newId = UUID.randomUUID();
         State stateObj = (State) applicationContext.getBean(stateType);
         stateObj.setMethodMap(rpcDispatcher.createMethodMap(stateObj));
         stateObj.setCreatedAt(clock.instant());
+        stateObj.setStateId(newId);
+        if (initParams != null) {
+            stateObj.init(initParams);
+        }
         states.put(newId, stateObj);
         return newId;
     }
@@ -61,11 +68,14 @@ public class StateManager {
     }
 
     @RpcMethod
-    public Object invokeMethodOnBackendState(UUID stateId, String methodName, JsonNode params) {
+    public Object invokeMethodOnBackendState(UUID stateId, String methodName, JsonNode params,
+                                             WebSocketSession session) {
         final State stateObject = getBackendState(stateId);
         stateObject.setLastInMsgAt(clock.instant());
         try {
-            return rpcDispatcher.dispatchRpcCall(methodName, params, stateObject.getMethodMap());
+            return rpcDispatcher.dispatchRpcCall(
+                    methodName, params, stateObject.getMethodMap(), new RpcAutowiredParamsLookupImpl(session)
+            );
         } catch (Exception ex) {
             LOG.error(ex.getMessage(), ex);
             return new OnlinegamesException(ex);
