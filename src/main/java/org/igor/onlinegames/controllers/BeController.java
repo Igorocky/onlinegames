@@ -22,6 +22,6 @@ public class BeController {
 
     @PostMapping("/rpc/{methodName}")
     public Object rpcEntry(@PathVariable String methodName, @RequestBody JsonNode passedParams) throws IOException, InvocationTargetException, IllegalAccessException {
-        return rpcDispatcher.dispatchRpcCall(methodName, passedParams);
+        return rpcDispatcher.dispatchRpcCall(methodName, passedParams, null);
     }
 }

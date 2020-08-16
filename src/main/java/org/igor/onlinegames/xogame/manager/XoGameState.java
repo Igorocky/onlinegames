@@ -21,6 +21,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.igor.onlinegames.common.OnlinegamesUtils.listOf;
@@ -32,7 +34,7 @@ public class XoGameState extends State {
     private static final String PLAYER_STATE = "playerState";
     public static final int MAX_NUMBER_OF_PLAYERS = 2;
 
-    private XoGamePhase phase;
+    private XoGamePhase phase = XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
     private UUID gameOwnerUserId;
     private List<XoPlayer> players;
     private Character[][] field;
@@ -49,6 +51,9 @@ public class XoGameState extends State {
 
     @RpcMethod
     public synchronized void startGame(WebSocketSession session) {
+        if (phase != XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
+            return;
+        }
         final UUID userId = extractUserIdFromSession(session);
         if (!userId.equals(gameOwnerUserId)) {
             sendMessageToFe(
@@ -84,6 +89,20 @@ public class XoGameState extends State {
         }
     }
 
+    @RpcMethod
+    public void clickCell(WebSocketSession session, int x, int y) {
+        executeOnBehalfOfPlayerVoid(session, player -> clickCell(player, x, y));
+    }
+
+    @RpcMethod
+    public XoGameStateDto getCurrentState(WebSocketSession session) {
+        return createViewOfCurrentState(
+                XoPlayer.builder()
+                        .gameOwner(extractUserIdFromSession(session).equals(gameOwnerUserId))
+                        .build()
+        );
+    }
+
     private XoPlayer createPlayer(UUID userId, int playerId, Character playerSymbol) {
         return XoPlayer.builder()
                 .userId(userId)
@@ -100,15 +119,25 @@ public class XoGameState extends State {
                 .forEach(session -> sendMessageToFe(session, msg));
     }
 
-    @RpcMethod
-    public void clickCell(WebSocketSession session, int x, int y) {
-        final XoPlayer playerState = extractPlayerFromSession(session);
-        clickCell(playerState, x, y);
+    private <T> T executeOnBehalfOfPlayer(WebSocketSession session, Function<XoPlayer, T> executor) {
+        final XoPlayer player = extractPlayerFromSession(session);
+        if (player != null) {
+            return executor.apply(player);
+        } else {
+            return null;
+        }
+    }
+
+    private void executeOnBehalfOfPlayerVoid(WebSocketSession session, Consumer<XoPlayer> executor) {
+        executeOnBehalfOfPlayer(session, player -> {
+            executor.accept(player);
+            return null;
+        });
     }
 
     private XoPlayer extractPlayerFromSession(WebSocketSession session) {
         XoPlayer boundPlayer = (XoPlayer) session.getAttributes().get(PLAYER_STATE);
-        if (boundPlayer == null) {
+        if (boundPlayer == null && players != null) {
             UUID userId = extractUserIdFromSession(session);
             boundPlayer = players.stream()
                     .filter(player -> userId.equals(player.getUserId()))
@@ -124,26 +153,30 @@ public class XoGameState extends State {
     }
 
     private XoGameStateDto createViewOfCurrentState(XoPlayer player) {
-        return XoGameStateDto.builder()
-                .phase(phase)
-                .numberOfWaitingPlayers(getNumberOfWaitingPlayers())
-                .field(createFieldDto(field))
-                .currentPlayerId(player.getPlayerId())
-                .players(createPlayersDto(player, players))
-                .playerIdToMove(nullSafeGetter(playerToMove, XoPlayer::getPlayerId))
-                .winnerId(nullSafeGetter(winner, XoPlayer::getPlayerId))
-                .build();
+        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
+            return XoGameStateDto.builder()
+                    .phase(phase)
+                    .numberOfWaitingPlayers(getNumberOfWaitingPlayers())
+                    .currentUserIsGameOwner(player.isGameOwner())
+                    .build();
+        } else {
+            return XoGameStateDto.builder()
+                    .phase(phase)
+                    .currentUserIsGameOwner(player.isGameOwner())
+                    .field(createFieldDto(field))
+                    .currentPlayerId(player.getPlayerId())
+                    .players(createPlayersDto(player, players))
+                    .playerIdToMove(nullSafeGetter(playerToMove, XoPlayer::getPlayerId))
+                    .winnerId(nullSafeGetter(winner, XoPlayer::getPlayerId))
+                    .build();
+        }
     }
 
     private Long getNumberOfWaitingPlayers() {
-        if (phase != XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
-            return null;
-        } else {
-            return sessions.stream()
-                    .map(this::extractUserIdFromSession)
-                    .distinct()
-                    .count();
-        }
+        return sessions.stream()
+                .map(this::extractUserIdFromSession)
+                .distinct()
+                .count();
     }
 
     public void clickCell(XoPlayer player, int x, int y) {

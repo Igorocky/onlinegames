@@ -6,15 +6,14 @@ const XO_GAME_BASE_PATH = FE_CONTEXT_PATH + "/xogame"
 const VIEW_URLS = {
     admin: FE_CONTEXT_PATH + "/admin",
     gameSelector: FE_CONTEXT_PATH + "/newgame",
-    xoGame: ({gameId,joinId}) => XO_GAME_BASE_PATH + "?"
-        + (gameId?("gameId="+gameId):"")
-        + (joinId?("joinId="+joinId):""),
+    xoGame: ({gameId}) => XO_GAME_BASE_PATH + "?"
+        + (gameId?("gameId="+gameId):""),
 }
 
 const VIEWS = [
     {name:"AdminPage", component: AdminView, path: VIEW_URLS.admin},
     {name:"GameSelector", component: GameSelector, path: VIEW_URLS.gameSelector},
-    {name:"XoGame", component: XoGameView, path: XO_GAME_BASE_PATH},
+    {name:"XoGame", component: XoGamePlayerView, path: XO_GAME_BASE_PATH},
 ]
 
 function getViewAbsoluteUrl(relUrl) {

@@ -1,8 +1,15 @@
 "use strict";
 
-const XoGamePlayerView = ({joinId}) => {
-    const backend = useBackend({stateId:joinId, onMessageFromBackend})
+const XoGamePlayerView = ({}) => {
+    const query = useQuery()
+    const gameId = query.get("gameId")
+
+    const backend = useBackend({stateId:gameId, onMessageFromBackend})
     const [beState, setBeState] = useState(null)
+
+    useEffect(() => {
+        backend.send('getCurrentState')
+    }, [])
 
     const playFieldSizePerCellKey = 'XoGamePlayerView.playFieldSizePerCell'
     const PLAY_FIELD_SIZE_PER_CELL_MIN = 20
@@ -30,9 +37,11 @@ const XoGamePlayerView = ({joinId}) => {
     function renderGameStatus() {
         if (beState.phase == "WAITING_FOR_PLAYERS_TO_JOIN") {
             return RE.Container.col.top.center({},{style:{marginTop: "30px"}},
-                RE.Typography({variant:"h3"},"Waiting for your opponent to join..."),
-                RE.Typography({},"Send this URL to your opponent to join"),
-                renderJoinUrls(getOpponents())
+                RE.Typography({variant:"h3"},"Waiting for players to join..."),
+                RE.Typography({},'Number of joined players: ' + beState.numberOfWaitingPlayers),
+                beState.currentUserIsGameOwner
+                    ? RE.Button({onClick: () => backend.send('startGame')}, "Start game")
+                    : null
             )
         } else if (beState.phase == "IN_PROGRESS") {
             return RE.Typography({variant:"h6"},
@@ -62,16 +71,6 @@ const XoGamePlayerView = ({joinId}) => {
         return beState.players.filter(player => player.playerId != beState.currentPlayerId)
     }
 
-    function renderJoinUrls(players) {
-        return RE.Fragment({},
-            players.map(player => RE.Container.row.left.center({key:player.playerId},{style:{marginLeft:"50px"}},
-                RE.span({style:{fontSize:"50px"}},player.symbol),
-                getViewAbsoluteUrl(VIEW_URLS.xoGame({joinId:player.joinId})),
-                player.connected ? "CONNECTED" : "WAITING..."
-            ))
-        )
-    }
-
     function renderPageContent() {
         if (beState) {
             return RE.Container.col.top.center({},{style:{marginTop:"20px"}},
@@ -96,6 +95,9 @@ const XoGamePlayerView = ({joinId}) => {
     }
 
     function renderField() {
+        if (!beState.field) {
+            return null
+        }
         const tableData = []
         for (let x = 0; x < 3; x++) {
             tableData.push([])
