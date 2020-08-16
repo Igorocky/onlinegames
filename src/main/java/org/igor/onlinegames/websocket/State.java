@@ -19,37 +19,24 @@ import java.util.Map;
 import java.util.UUID;
 
 public abstract class State {
-    private static final Logger LOG = LoggerFactory.getLogger(StateManager.class);
+    private static final Logger LOG = LoggerFactory.getLogger(State.class);
     private Map<String, Pair<Object, Method>> methodMap;
     private Instant createdAt;
     private Instant lastInMsgAt;
     private Instant lastOutMsgAt;
-    private List<WebSocketSession> sessions = new ArrayList<>();
+    protected List<WebSocketSession> sessions = new ArrayList<>();
     private Clock clock = Clock.systemUTC();
     private UUID stateId;
 
     @Autowired
     private ObjectMapper mapper;
 
-    public void setMethodMap(Map<String, Pair<Object, Method>> methodMap) {
-        this.methodMap = methodMap;
-    }
-
-    public Map<String, Pair<Object, Method>> getMethodMap() {
-        return methodMap;
-    }
-
     public synchronized void bind(WebSocketSession session, JsonNode bindParams) {
         sessions.add(session);
     }
 
     public synchronized void unbind(WebSocketSession session) {
-        for (int i = 0; i < sessions.size(); i++) {
-            if (sessions.get(i) == session) {
-                sessions.remove(i);
-                i--;
-            }
-        }
+        sessions.remove(session);
     }
 
     public synchronized void unbindAndClose(WebSocketSession session) {
@@ -64,7 +51,28 @@ public abstract class State {
     }
 
     public synchronized void unbindAndCloseAllWebSockets() {
-        sessions.forEach(this::unbindAndClose);
+        new ArrayList<>(sessions).forEach(this::unbindAndClose);
+    }
+
+    protected synchronized void sendMessageToFe(WebSocketSession session, Object msg) {
+        setLastOutMsgAt(clock.instant());
+        try {
+            session.sendMessage(new TextMessage(mapper.writeValueAsString(msg)));
+        } catch (IOException ex) {
+            LOG.error(ex.getMessage(), ex);
+        }
+    }
+
+    protected synchronized void sendMessageToFe(Object msg) {
+        sessions.forEach(session -> sendMessageToFe(session, msg));
+    }
+
+    public void setMethodMap(Map<String, Pair<Object, Method>> methodMap) {
+        this.methodMap = methodMap;
+    }
+
+    public Map<String, Pair<Object, Method>> getMethodMap() {
+        return methodMap;
     }
 
     public void setCreatedAt(Instant createdAt) {
@@ -99,19 +107,9 @@ public abstract class State {
         this.stateId = stateId;
     }
 
-    protected synchronized void sendMessageToFe(Object msg) {
-        if (!sessions.isEmpty()) {
-            setLastOutMsgAt(clock.instant());
-            for (WebSocketSession session : sessions) {
-                try {
-                    session.sendMessage(new TextMessage(mapper.writeValueAsString(msg)));
-                } catch (IOException ex) {
-                    LOG.error(ex.getMessage(), ex);
-                }
-            }
-        }
+    protected Object getViewRepresentation() {
+        return this.toString();
     }
 
-    abstract protected Object getViewRepresentation();
-    abstract protected void init(JsonNode args);
+    protected void init(JsonNode args) {}
 }

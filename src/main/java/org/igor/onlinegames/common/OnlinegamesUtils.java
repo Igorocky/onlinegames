@@ -1,6 +1,8 @@
 package org.igor.onlinegames.common;
 
 import org.igor.onlinegames.exceptions.OnlinegamesException;
+import org.igor.onlinegames.model.UserSessionData;
+import org.springframework.web.socket.WebSocketSession;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -9,7 +11,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -17,6 +21,25 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class OnlinegamesUtils {
+    private static final String STATE_ID = "STATE_ID";
+    public static final String USER_DATA = "USER_DATA";
+
+    public static Optional<UUID> extractDestinationStateId(WebSocketSession session) {
+        return Optional.ofNullable((UUID) session.getAttributes().get(STATE_ID));
+    }
+
+    public static Optional<UserSessionData> extractUserSessionData(WebSocketSession session) {
+        return Optional.ofNullable((UserSessionData) session.getAttributes().get(USER_DATA));
+    }
+
+    public static void setDestinationStateId(WebSocketSession session, UUID destinationStateId) {
+        session.getAttributes().put(STATE_ID, destinationStateId);
+    }
+
+    public static void setUserSessionData(WebSocketSession session, UserSessionData userSessionData) {
+        session.getAttributes().put(USER_DATA, userSessionData);
+    }
+
     public static <T> T getSingleValueOrNull(List<T> values) {
         if (values.size() > 1) {
             throw new OnlinegamesException("values.size() > 1");

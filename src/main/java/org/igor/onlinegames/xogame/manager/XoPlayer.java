@@ -2,9 +2,6 @@ package org.igor.onlinegames.xogame.manager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
-import lombok.extern.java.Log;
-import org.igor.onlinegames.model.UserData;
-import org.igor.onlinegames.websocket.StateManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.socket.TextMessage;
@@ -15,27 +12,17 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.function.Supplier;
 
-@Log
 @Data
-public class XoPlayerState {
-    private static final Logger LOG = LoggerFactory.getLogger(XoPlayerState.class);
+@AllAr
+public class XoPlayer {
+    private static final Logger LOG = LoggerFactory.getLogger(XoPlayer.class);
 
+    private final UUID userId;
+    private final boolean gameOwner;
+    private final int playerId;
+    private final Character playerSymbol;
     private final ObjectMapper mapper;
-    private Instant createdAt = Instant.now();
     private Instant lastInMsgAt;
-    private Instant lastOutMsgAt;
-    private boolean connected;
-    private boolean gameOwner;
-    private UUID joinId;
-    private int playerId;
-    private Character playerSymbol;
-    private UserData userData;
-    private boolean optional;
-    private WebSocketSession session;
-
-    public XoPlayerState(ObjectMapper mapper) {
-        this.mapper = mapper;
-    }
 
     public <T> T ifGameOwner(Supplier<T> exp) {
         if (gameOwner) {
@@ -46,7 +33,6 @@ public class XoPlayerState {
     }
 
     public void sendMessageToFe(Object msg) {
-        setLastOutMsgAt(Instant.now());
         try {
             session.sendMessage(new TextMessage(mapper.writeValueAsString(msg)));
         } catch (IOException ex) {

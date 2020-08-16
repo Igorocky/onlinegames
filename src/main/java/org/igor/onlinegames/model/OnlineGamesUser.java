@@ -10,5 +10,5 @@ import org.springframework.web.context.WebApplicationContext;
 @Scope(value = WebApplicationContext.SCOPE_SESSION, proxyMode = ScopedProxyMode.TARGET_CLASS)
 @Data
 public class OnlineGamesUser {
-    private UserData userData = new UserData();
+    private UserSessionData userData = new UserSessionData();
 }

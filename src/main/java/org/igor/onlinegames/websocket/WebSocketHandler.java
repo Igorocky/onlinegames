@@ -1,6 +1,7 @@
 package org.igor.onlinegames.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.igor.onlinegames.common.OnlinegamesUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -14,8 +15,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class WebSocketHandler extends TextWebSocketHandler {
-    public static final String STATE_ID = "STATE_ID";
-    public static final String USER_DATA = "USER_DATA";
     @Autowired
     private StateManager stateManager;
     @Autowired
@@ -26,7 +25,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         final String payload = message.getPayload();
         AsyncWebSocketRpcCall request = mapper.readValue(payload, AsyncWebSocketRpcCall.class);
-        Optional<UUID> stateIdOpt = Optional.ofNullable((UUID) session.getAttributes().get(STATE_ID));
+        Optional<UUID> stateIdOpt = OnlinegamesUtils.extractDestinationStateId(session);
         if ("-bindToState".equals(request.getMethodName())) {
             UUID newStateId = UUID.fromString(request.getParams().get("stateId").asText());
             UUID oldStateId = stateIdOpt.orElse(null);
@@ -35,7 +34,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     stateManager.getBackendState(oldStateId).unbind(session);
                 }
                 stateManager.getBackendState(newStateId).bind(session, request.getParams().get("bindParams"));
-                session.getAttributes().put(STATE_ID, newStateId);
+                OnlinegamesUtils.setDestinationStateId(session, newStateId);
             }
             stateManager.getBackendState(newStateId).setLastInMsgAt(Instant.now());
         } else {
@@ -53,7 +52,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        UUID stateId = (UUID) session.getAttributes().get(STATE_ID);
+        UUID stateId = OnlinegamesUtils.extractDestinationStateId(session).orElse(null);
         if (stateId != null) {
             stateManager.getBackendState(stateId).unbindAndClose(session);
         }

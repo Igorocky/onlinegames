@@ -1,5 +1,6 @@
 package org.igor.onlinegames.config;
 
+import org.igor.onlinegames.common.OnlinegamesUtils;
 import org.igor.onlinegames.model.OnlineGamesUser;
 import org.igor.onlinegames.websocket.WebSocketHandler;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +42,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
                     ServerHttpResponse response,
                     org.springframework.web.socket.WebSocketHandler wsHandler,
                     Map<String, Object> attributes) {
-                attributes.put(WebSocketHandler.USER_DATA, user.getUserData());
+                attributes.put(OnlinegamesUtils.USER_DATA, user.getUserData());
                 return true;
             }
 

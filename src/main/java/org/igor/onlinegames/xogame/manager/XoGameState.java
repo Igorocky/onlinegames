@@ -4,15 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
 import lombok.val;
-import org.igor.onlinegames.model.UserData;
+import org.igor.onlinegames.model.UserSessionData;
 import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
-import org.igor.onlinegames.websocket.StateManager;
 import org.igor.onlinegames.xogame.dto.XoCellDto;
 import org.igor.onlinegames.xogame.dto.XoGameConfigDto;
 import org.igor.onlinegames.xogame.dto.XoGameConnectDto;
 import org.igor.onlinegames.xogame.dto.XoGameErrorDto;
-import org.igor.onlinegames.xogame.dto.XoGameMsgDto;
 import org.igor.onlinegames.xogame.dto.XoGamePhase;
 import org.igor.onlinegames.xogame.dto.XoGameStateDto;
 import org.igor.onlinegames.xogame.dto.XoPlayerConfigDto;
@@ -30,44 +28,24 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.igor.onlinegames.common.OnlinegamesUtils.nullSafeGetter;
 import static org.igor.onlinegames.websocket.WebSocketHandler.USER_DATA;
 
-// TODO: 10.08.2020 replace Arrays.asList with loops
-
 @Component("XoGame")
 @Scope("prototype")
 public class XoGameState extends State {
     private static final String PLAYER_STATE = "playerState";
-    public static final int TIMER_DELAY_SECONDS = 5;
-    public static final int FE_PING_DELAY_SECONDS = TIMER_DELAY_SECONDS;
-    private ScheduledFuture<?> timerHandle;
 
     private XoGamePhase phase;
-    private List<XoPlayerState> players;
+    private List<XoPlayer> players;
     private Character[][] field;
-    private XoPlayerState playerToMove;
-    private XoPlayerState winner;
+    private XoPlayer playerToMove;
+    private XoPlayer winner;
 
-    @Autowired
-    private StateManager stateManager;
-    @Autowired
-    private ScheduledExecutorService scheduledExecutorService;
     @Autowired
     private ObjectMapper mapper;
-
-    public XoGameState() {
-        timerHandle = scheduledExecutorService.schedule(
-                () -> onTimer(),
-                TIMER_DELAY_SECONDS,
-                TimeUnit.SECONDS
-        );
-    }
 
     public void startGame() {
 
@@ -75,37 +53,37 @@ public class XoGameState extends State {
 
     @RpcMethod
     public void clickCell(WebSocketSession session, int x, int y) {
-        final XoPlayerState playerState = extractPlayerFromSession(session);
+        final XoPlayer playerState = extractPlayerFromSession(session);
         playerState.setLastInMsgAt(Instant.now());
         clickCell(playerState, x, y);
     }
 
     @RpcMethod
     public void ping(WebSocketSession session) {
-        final XoPlayerState playerState = extractPlayerFromSession(session);
+        final XoPlayer playerState = extractPlayerFromSession(session);
         playerState.setLastInMsgAt(Instant.now());
     }
 
-    private XoPlayerState extractPlayerFromSession(WebSocketSession session) {
-        return (XoPlayerState) session.getAttributes().get(PLAYER_STATE);
+    private XoPlayer extractPlayerFromSession(WebSocketSession session) {
+        return (XoPlayer) session.getAttributes().get(PLAYER_STATE);
     }
 
     private UUID extractUserIdFromSession(WebSocketSession session) {
-        return ((UserData) session.getAttributes().get(USER_DATA)).getUserId();
+        return ((UserSessionData) session.getAttributes().get(USER_DATA)).getUserId();
     }
 
-    private XoGameStateDto createViewOfCurrentState(XoPlayerState viewer) {
+    private XoGameStateDto createViewOfCurrentState(XoPlayer viewer) {
         return XoGameStateDto.builder()
                 .phase(phase)
                 .field(createFieldDto(field))
                 .currentPlayerId(viewer.getPlayerId())
                 .players(createPlayersDto(viewer, players))
-                .playerIdToMove(nullSafeGetter(playerToMove, XoPlayerState::getPlayerId))
-                .winnerId(nullSafeGetter(winner, XoPlayerState::getPlayerId))
+                .playerIdToMove(nullSafeGetter(playerToMove, XoPlayer::getPlayerId))
+                .winnerId(nullSafeGetter(winner, XoPlayer::getPlayerId))
                 .build();
     }
 
-    public void clickCell(XoPlayerState player, int x, int y) {
+    public void clickCell(XoPlayer player, int x, int y) {
         if (phase == XoGamePhase.IN_PROGRESS) {
             if (!(0 <= x && x < field.length && 0 <= y && y < field[0].length)) {
                 player.sendMessageToFe(XoGameErrorDto.builder()
@@ -123,7 +101,7 @@ public class XoGameState extends State {
                 if (winnerSymbol != null) {
                     playerToMove = null;
                     winner = players.stream()
-                            .filter(xoPlayerState -> winnerSymbol.equals(xoPlayerState.getPlayerSymbol()))
+                            .filter(xoPlayer -> winnerSymbol.equals(xoPlayer.getPlayerSymbol()))
                             .findFirst()
                             .get();
                     phase = XoGamePhase.FINISHED;
@@ -140,33 +118,33 @@ public class XoGameState extends State {
         }
     }
 
-    public void playerConnected(XoPlayerState player) {
+    public void playerConnected(XoPlayer player) {
         if (players.stream().allMatch(p -> !p.isGameOwner())) {
             player.setGameOwner(true);
         }
         player.setConnected(true);
-        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN && players.stream().allMatch(XoPlayerState::isConnected)) {
+        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN && players.stream().allMatch(XoPlayer::isConnected)) {
             phase = XoGamePhase.IN_PROGRESS;
         }
         broadcastGameState();
     }
 
-    private XoPlayerState getNextPlayerToMove() {
+    private XoPlayer getNextPlayerToMove() {
         return players.stream().filter(player -> player != playerToMove).findFirst().get();
     }
 
     private void broadcastGameState() {
-        players.forEach(xoPlayerState -> xoPlayerState.sendMessageToFe(createViewOfCurrentState(xoPlayerState)));
+        players.forEach(xoPlayer -> xoPlayer.sendMessageToFe(createViewOfCurrentState(xoPlayer)));
     }
 
-    private List<XoPlayerDto> createPlayersDto(XoPlayerState viewer, List<XoPlayerState> players) {
+    private List<XoPlayerDto> createPlayersDto(XoPlayer viewer, List<XoPlayer> players) {
         return players.stream()
-                .map(xoPlayerState -> XoPlayerDto.builder()
-                        .joinId(viewer.ifGameOwner(() -> xoPlayerState.getJoinId()))
-                        .gameOwner(viewer.ifGameOwner(() -> xoPlayerState.isGameOwner()))
-                        .playerId(xoPlayerState.getPlayerId())
-                        .connected(xoPlayerState.isConnected())
-                        .symbol(xoPlayerState.getPlayerSymbol())
+                .map(xoPlayer -> XoPlayerDto.builder()
+                        .joinId(viewer.ifGameOwner(() -> xoPlayer.getJoinId()))
+                        .gameOwner(viewer.ifGameOwner(() -> xoPlayer.isGameOwner()))
+                        .playerId(xoPlayer.getPlayerId())
+                        .connected(xoPlayer.isConnected())
+                        .symbol(xoPlayer.getPlayerSymbol())
                         .build()
                 )
                 .collect(Collectors.toList());
@@ -219,31 +197,14 @@ public class XoGameState extends State {
                 && field[x2][y2].equals(field[x3][y3]);
     }
 
-    private synchronized void onTimer() {
-        if (findPlayersWithDelayLessThan(30*60).isEmpty()) {
-            stateManager.removeBackendState(getStateId());
-        } else {
-            findPlayersWithDelayMoreThan(2*FE_PING_DELAY_SECONDS).forEach(playerState -> {
-                if (phase == XoGamePhase.IN_PROGRESS) {
-                    playerState.setConnected(false);
-                } else {
-                    unbindSessionFromPlayer(playerState);
-                }
-            });
-            if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
-
-            }
-        }
-    }
-
-    private List<XoPlayerState> findPlayersWithDelayMoreThan(int delaySeconds) {
+    private List<XoPlayer> findPlayersWithDelayMoreThan(int delaySeconds) {
         final Instant currTime = Instant.now();
         return players.stream()
                 .filter(playerState -> Duration.between(playerState.getLastInMsgAt(), currTime).getSeconds() > delaySeconds)
                 .collect(Collectors.toList());
     }
 
-    private List<XoPlayerState> findPlayersWithDelayLessThan(int delaySeconds) {
+    private List<XoPlayer> findPlayersWithDelayLessThan(int delaySeconds) {
         final Instant currTime = Instant.now();
         return players.stream()
                 .filter(playerState -> Duration.between(playerState.getLastInMsgAt(), currTime).getSeconds() < delaySeconds)
@@ -270,7 +231,7 @@ public class XoGameState extends State {
                         });
             } else if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
                 findPlayersByUserId(extractUserIdFromSession(session)).forEach(this::unbindSessionFromPlayer);
-                final XoPlayerState playerToBindTo = players.stream()
+                final XoPlayer playerToBindTo = players.stream()
                         .filter(player -> !player.isConnected() && !player.isOptional())
                         .findAny()
                         .orElseGet(
@@ -292,13 +253,13 @@ public class XoGameState extends State {
         }
     }
 
-    private List<XoPlayerState> findPlayersByUserId(UUID userId) {
+    private List<XoPlayer> findPlayersByUserId(UUID userId) {
         return players.stream()
                 .filter(playerState -> playerState.getSession() != null && userId.equals(extractUserIdFromSession(playerState.getSession())))
                 .collect(Collectors.toList());
     }
 
-    private void bindSessionToPlayer(WebSocketSession session, XoPlayerState player) {
+    private void bindSessionToPlayer(WebSocketSession session, XoPlayer player) {
         unbindSessionFromPlayer(player);
         session.getAttributes().put(PLAYER_STATE, player);
         player.setSession(session);
@@ -307,7 +268,7 @@ public class XoGameState extends State {
     }
 
     @SneakyThrows
-    private void unbindSessionFromPlayer(XoPlayerState player) {
+    private void unbindSessionFromPlayer(XoPlayer player) {
         if (player.getSession() != null) {
             player.getSession().close();
             player.getSession().getAttributes().remove(PLAYER_STATE);
@@ -327,7 +288,7 @@ public class XoGameState extends State {
         for (int i = 0; i < gameConfig.getPlayerConfigList().size(); i++) {
             final XoPlayerConfigDto playerConfig = gameConfig.getPlayerConfigList().get(i);
             UUID playerStateId = UUID.randomUUID();
-            XoPlayerState player = new XoPlayerState(mapper);
+            XoPlayer player = new XoPlayer(mapper);
             player.setJoinId(playerStateId);
             player.setPlayerId(i+1);
             player.setPlayerSymbol(validatePlayerSymbol(players, playerConfig.getPlayerSymbol()));
@@ -338,12 +299,12 @@ public class XoGameState extends State {
         field = new Character[gameConfig.getFieldSize()][gameConfig.getFieldSize()];
     }
 
-    private Character validatePlayerSymbol(List<XoPlayerState> players, Character symbolFromConfig) {
+    private Character validatePlayerSymbol(List<XoPlayer> players, Character symbolFromConfig) {
         if (symbolFromConfig == null || !(symbolFromConfig.charValue() == 'x' || symbolFromConfig.charValue() == 'o')) {
             return null;
         } else {
             final Set<Character> existingSymbols = players.stream()
-                    .map(XoPlayerState::getPlayerSymbol)
+                    .map(XoPlayer::getPlayerSymbol)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
             if (existingSymbols.contains(symbolFromConfig)) {
