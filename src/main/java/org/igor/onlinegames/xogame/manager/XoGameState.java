@@ -1,86 +1,149 @@
 package org.igor.onlinegames.xogame.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.SneakyThrows;
-import lombok.val;
+import org.igor.onlinegames.common.OnlinegamesUtils;
 import org.igor.onlinegames.model.UserSessionData;
 import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
 import org.igor.onlinegames.xogame.dto.XoCellDto;
-import org.igor.onlinegames.xogame.dto.XoGameConfigDto;
-import org.igor.onlinegames.xogame.dto.XoGameConnectDto;
 import org.igor.onlinegames.xogame.dto.XoGameErrorDto;
 import org.igor.onlinegames.xogame.dto.XoGamePhase;
 import org.igor.onlinegames.xogame.dto.XoGameStateDto;
-import org.igor.onlinegames.xogame.dto.XoPlayerConfigDto;
 import org.igor.onlinegames.xogame.dto.XoPlayerDto;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
+import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.igor.onlinegames.common.OnlinegamesUtils.listOf;
 import static org.igor.onlinegames.common.OnlinegamesUtils.nullSafeGetter;
-import static org.igor.onlinegames.websocket.WebSocketHandler.USER_DATA;
 
 @Component("XoGame")
 @Scope("prototype")
 public class XoGameState extends State {
     private static final String PLAYER_STATE = "playerState";
+    public static final int MAX_NUMBER_OF_PLAYERS = 2;
 
     private XoGamePhase phase;
+    private UUID gameOwnerUserId;
     private List<XoPlayer> players;
     private Character[][] field;
     private XoPlayer playerToMove;
     private XoPlayer winner;
 
-    @Autowired
-    private ObjectMapper mapper;
+    @Override
+    public synchronized void bind(WebSocketSession session, JsonNode bindParams) {
+        if (gameOwnerUserId == null) {
+            gameOwnerUserId = extractUserIdFromSession(session);
+        }
+        super.bind(session, bindParams);
+    }
 
-    public void startGame() {
+    @RpcMethod
+    public synchronized void startGame(WebSocketSession session) {
+        final UUID userId = extractUserIdFromSession(session);
+        if (!userId.equals(gameOwnerUserId)) {
+            sendMessageToFe(
+                    session,
+                    XoGameErrorDto.builder().errorDescription("You don't have permissions to start game.").build()
+            );
+        } else {
+            players = new ArrayList<>();
+            final List<UUID> userIds = new ArrayList<>(
+                    sessions.stream()
+                            .map(OnlinegamesUtils::extractUserSessionData)
+                            .map(Optional::get)
+                            .map(UserSessionData::getUserId)
+                            .filter(id -> !userId.equals(id))
+                            .distinct()
+                            .limit(MAX_NUMBER_OF_PLAYERS-1)
+                            .collect(Collectors.toList())
+            );
+            userIds.add(userId);
+            List<Character> possibleSymbols = listOf('x','o');
+            final Random rnd = new Random();
+            while (!userIds.isEmpty()) {
+                players.add(createPlayer(
+                        userIds.remove(rnd.nextInt(userIds.size())),
+                        players.size(),
+                        possibleSymbols.remove(0)
+                ));
+            }
+            playerToMove = players.get(0);
+            field = new Character[3][3];
+            phase = XoGamePhase.IN_PROGRESS;
+            broadcastGameState();
+        }
+    }
 
+    private XoPlayer createPlayer(UUID userId, int playerId, Character playerSymbol) {
+        return XoPlayer.builder()
+                .userId(userId)
+                .gameOwner(userId.equals(gameOwnerUserId))
+                .playerId(playerId)
+                .playerSymbol(playerSymbol)
+                .feMessageSender(msg -> sendMessageToFe(userId, msg))
+                .build();
+    }
+
+    private void sendMessageToFe(UUID userId, Object msg) {
+        sessions.stream()
+                .filter(session -> extractUserIdFromSession(session).equals(userId))
+                .forEach(session -> sendMessageToFe(session, msg));
     }
 
     @RpcMethod
     public void clickCell(WebSocketSession session, int x, int y) {
         final XoPlayer playerState = extractPlayerFromSession(session);
-        playerState.setLastInMsgAt(Instant.now());
         clickCell(playerState, x, y);
     }
 
-    @RpcMethod
-    public void ping(WebSocketSession session) {
-        final XoPlayer playerState = extractPlayerFromSession(session);
-        playerState.setLastInMsgAt(Instant.now());
-    }
-
     private XoPlayer extractPlayerFromSession(WebSocketSession session) {
-        return (XoPlayer) session.getAttributes().get(PLAYER_STATE);
+        XoPlayer boundPlayer = (XoPlayer) session.getAttributes().get(PLAYER_STATE);
+        if (boundPlayer == null) {
+            UUID userId = extractUserIdFromSession(session);
+            boundPlayer = players.stream()
+                    .filter(player -> userId.equals(player.getUserId()))
+                    .findFirst()
+                    .get();
+            session.getAttributes().put(PLAYER_STATE, boundPlayer);
+        }
+        return boundPlayer;
     }
 
     private UUID extractUserIdFromSession(WebSocketSession session) {
-        return ((UserSessionData) session.getAttributes().get(USER_DATA)).getUserId();
+        return OnlinegamesUtils.extractUserSessionData(session).get().getUserId();
     }
 
-    private XoGameStateDto createViewOfCurrentState(XoPlayer viewer) {
+    private XoGameStateDto createViewOfCurrentState(XoPlayer player) {
         return XoGameStateDto.builder()
                 .phase(phase)
+                .numberOfWaitingPlayers(getNumberOfWaitingPlayers())
                 .field(createFieldDto(field))
-                .currentPlayerId(viewer.getPlayerId())
-                .players(createPlayersDto(viewer, players))
+                .currentPlayerId(player.getPlayerId())
+                .players(createPlayersDto(player, players))
                 .playerIdToMove(nullSafeGetter(playerToMove, XoPlayer::getPlayerId))
                 .winnerId(nullSafeGetter(winner, XoPlayer::getPlayerId))
                 .build();
+    }
+
+    private Long getNumberOfWaitingPlayers() {
+        if (phase != XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
+            return null;
+        } else {
+            return sessions.stream()
+                    .map(this::extractUserIdFromSession)
+                    .distinct()
+                    .count();
+        }
     }
 
     public void clickCell(XoPlayer player, int x, int y) {
@@ -118,36 +181,27 @@ public class XoGameState extends State {
         }
     }
 
-    public void playerConnected(XoPlayer player) {
-        if (players.stream().allMatch(p -> !p.isGameOwner())) {
-            player.setGameOwner(true);
-        }
-        player.setConnected(true);
-        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN && players.stream().allMatch(XoPlayer::isConnected)) {
-            phase = XoGamePhase.IN_PROGRESS;
-        }
-        broadcastGameState();
-    }
-
     private XoPlayer getNextPlayerToMove() {
-        return players.stream().filter(player -> player != playerToMove).findFirst().get();
+        return players.get(playerToMove.getPlayerId()%players.size());
     }
 
     private void broadcastGameState() {
-        players.forEach(xoPlayer -> xoPlayer.sendMessageToFe(createViewOfCurrentState(xoPlayer)));
+        players.forEach(player -> player.sendMessageToFe(createViewOfCurrentState(player)));
     }
 
     private List<XoPlayerDto> createPlayersDto(XoPlayer viewer, List<XoPlayer> players) {
-        return players.stream()
-                .map(xoPlayer -> XoPlayerDto.builder()
-                        .joinId(viewer.ifGameOwner(() -> xoPlayer.getJoinId()))
-                        .gameOwner(viewer.ifGameOwner(() -> xoPlayer.isGameOwner()))
-                        .playerId(xoPlayer.getPlayerId())
-                        .connected(xoPlayer.isConnected())
-                        .symbol(xoPlayer.getPlayerSymbol())
-                        .build()
-                )
-                .collect(Collectors.toList());
+        if (players == null) {
+            return null;
+        } else {
+            return players.stream()
+                    .map(xoPlayer -> XoPlayerDto.builder()
+                            .gameOwner(viewer.ifGameOwner(() -> xoPlayer.isGameOwner()))
+                            .playerId(xoPlayer.getPlayerId())
+                            .symbol(xoPlayer.getPlayerSymbol())
+                            .build()
+                    )
+                    .collect(Collectors.toList());
+        }
     }
 
     private List<XoCellDto> createFieldDto(Character[][] field) {
@@ -197,121 +251,8 @@ public class XoGameState extends State {
                 && field[x2][y2].equals(field[x3][y3]);
     }
 
-    private List<XoPlayer> findPlayersWithDelayMoreThan(int delaySeconds) {
-        final Instant currTime = Instant.now();
-        return players.stream()
-                .filter(playerState -> Duration.between(playerState.getLastInMsgAt(), currTime).getSeconds() > delaySeconds)
-                .collect(Collectors.toList());
-    }
-
-    private List<XoPlayer> findPlayersWithDelayLessThan(int delaySeconds) {
-        final Instant currTime = Instant.now();
-        return players.stream()
-                .filter(playerState -> Duration.between(playerState.getLastInMsgAt(), currTime).getSeconds() < delaySeconds)
-                .collect(Collectors.toList());
-    }
-
     @Override
     protected Object getViewRepresentation() {
         return this.getClass().getSimpleName();
-    }
-
-    @SneakyThrows
-    @Override
-    public synchronized void bind(WebSocketSession session, JsonNode bindParams) {
-        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN || phase == XoGamePhase.IN_PROGRESS) {
-            final XoGameConnectDto connectParams = mapper.readValue(mapper.treeAsTokens(bindParams), XoGameConnectDto.class);
-            if (connectParams.getJoinId() != null) {
-                players.stream()
-                        .filter(player -> player.getJoinId().equals(connectParams.getJoinId()))
-                        .findAny()
-                        .ifPresent(player -> {
-                            bindSessionToPlayer(session, player);
-                            onTimer();
-                        });
-            } else if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
-                findPlayersByUserId(extractUserIdFromSession(session)).forEach(this::unbindSessionFromPlayer);
-                final XoPlayer playerToBindTo = players.stream()
-                        .filter(player -> !player.isConnected() && !player.isOptional())
-                        .findAny()
-                        .orElseGet(
-                                () -> players.stream()
-                                        .filter(player -> !player.isConnected())
-                                        .findAny()
-                                        .orElse(null)
-                        );
-                if (playerToBindTo != null) {
-                    bindSessionToPlayer(session, playerToBindTo);
-                }
-            } else if (phase == XoGamePhase.IN_PROGRESS) {
-                val playersWithSameUserId = findPlayersByUserId(extractUserIdFromSession(session));
-                playersWithSameUserId.forEach(this::unbindSessionFromPlayer);
-                if (!playersWithSameUserId.isEmpty()) {
-                    bindSessionToPlayer(session, playersWithSameUserId.get(0));
-                }
-            }
-        }
-    }
-
-    private List<XoPlayer> findPlayersByUserId(UUID userId) {
-        return players.stream()
-                .filter(playerState -> playerState.getSession() != null && userId.equals(extractUserIdFromSession(playerState.getSession())))
-                .collect(Collectors.toList());
-    }
-
-    private void bindSessionToPlayer(WebSocketSession session, XoPlayer player) {
-        unbindSessionFromPlayer(player);
-        session.getAttributes().put(PLAYER_STATE, player);
-        player.setSession(session);
-        player.setConnected(true);
-        player.setLastInMsgAt(Instant.now());
-    }
-
-    @SneakyThrows
-    private void unbindSessionFromPlayer(XoPlayer player) {
-        if (player.getSession() != null) {
-            player.getSession().close();
-            player.getSession().getAttributes().remove(PLAYER_STATE);
-        }
-        player.setSession(null);
-        player.setConnected(false);
-    }
-
-    @SneakyThrows
-    @Override
-    protected void init(JsonNode args) {
-        final XoGameConfigDto gameConfig = mapper.readValue(mapper.treeAsTokens(args), XoGameConfigDto.class);
-
-        phase = XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
-        players = new ArrayList<>();
-
-        for (int i = 0; i < gameConfig.getPlayerConfigList().size(); i++) {
-            final XoPlayerConfigDto playerConfig = gameConfig.getPlayerConfigList().get(i);
-            UUID playerStateId = UUID.randomUUID();
-            XoPlayer player = new XoPlayer(mapper);
-            player.setJoinId(playerStateId);
-            player.setPlayerId(i+1);
-            player.setPlayerSymbol(validatePlayerSymbol(players, playerConfig.getPlayerSymbol()));
-            player.setOptional(playerConfig.isOptional());
-            players.add(player);
-        }
-
-        field = new Character[gameConfig.getFieldSize()][gameConfig.getFieldSize()];
-    }
-
-    private Character validatePlayerSymbol(List<XoPlayer> players, Character symbolFromConfig) {
-        if (symbolFromConfig == null || !(symbolFromConfig.charValue() == 'x' || symbolFromConfig.charValue() == 'o')) {
-            return null;
-        } else {
-            final Set<Character> existingSymbols = players.stream()
-                    .map(XoPlayer::getPlayerSymbol)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-            if (existingSymbols.contains(symbolFromConfig)) {
-                return null;
-            } else {
-                return symbolFromConfig;
-            }
-        }
     }
 }

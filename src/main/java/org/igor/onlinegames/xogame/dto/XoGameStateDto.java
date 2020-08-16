@@ -10,8 +10,8 @@ import java.util.List;
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class XoGameStateDto implements XoGameDto {
-    private int pingPeriodSeconds;
     private XoGamePhase phase;
+    private Long numberOfWaitingPlayers;
     private List<XoCellDto> field;
     private List<XoPlayerDto> players;
     private Integer currentPlayerId;

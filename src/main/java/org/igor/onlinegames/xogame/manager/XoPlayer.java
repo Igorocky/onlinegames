@@ -1,19 +1,19 @@
 package org.igor.onlinegames.xogame.manager;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import org.igor.onlinegames.xogame.dto.XoGameDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.socket.TextMessage;
-import org.springframework.web.socket.WebSocketSession;
 
-import java.io.IOException;
-import java.time.Instant;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 @Data
-@AllAr
+@AllArgsConstructor
+@Builder
 public class XoPlayer {
     private static final Logger LOG = LoggerFactory.getLogger(XoPlayer.class);
 
@@ -21,8 +21,7 @@ public class XoPlayer {
     private final boolean gameOwner;
     private final int playerId;
     private final Character playerSymbol;
-    private final ObjectMapper mapper;
-    private Instant lastInMsgAt;
+    private final Consumer<XoGameDto> feMessageSender;
 
     public <T> T ifGameOwner(Supplier<T> exp) {
         if (gameOwner) {
@@ -32,11 +31,7 @@ public class XoPlayer {
         }
     }
 
-    public void sendMessageToFe(Object msg) {
-        try {
-            session.sendMessage(new TextMessage(mapper.writeValueAsString(msg)));
-        } catch (IOException ex) {
-            LOG.error(ex.getMessage(), ex);
-        }
+    public void sendMessageToFe(XoGameDto msg) {
+        feMessageSender.accept(msg);
     }
 }
