@@ -73,7 +73,7 @@ public class XoGameState extends State {
                             .collect(Collectors.toList())
             );
             userIds.add(userId);
-            List<Character> possibleSymbols = listOf('x','o');
+            List<Character> possibleSymbols = new ArrayList<>(listOf('x','o'));
             final Random rnd = new Random();
             while (!userIds.isEmpty()) {
                 players.add(createPlayer(
