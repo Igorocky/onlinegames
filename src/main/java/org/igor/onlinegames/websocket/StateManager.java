@@ -92,4 +92,8 @@ public class StateManager {
     public State getBackendState(UUID id) {
         return states.get(id);
     }
+
+    public Map<UUID, State> getStates() {
+        return states;
+    }
 }

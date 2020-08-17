@@ -2,6 +2,7 @@ package org.igor.onlinegames.xogame.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.igor.onlinegames.common.OnlinegamesUtils;
+import org.igor.onlinegames.model.GameState;
 import org.igor.onlinegames.model.UserSessionData;
 import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
@@ -30,7 +31,7 @@ import static org.igor.onlinegames.common.OnlinegamesUtils.nullSafeGetter;
 
 @Component("XoGame")
 @Scope("prototype")
-public class XoGameState extends State {
+public class XoGameState extends State implements GameState {
     private static final String PLAYER_STATE = "playerState";
     public static final int MAX_NUMBER_OF_PLAYERS = 2;
 
@@ -287,5 +288,20 @@ public class XoGameState extends State {
     @Override
     protected Object getViewRepresentation() {
         return this.getClass().getSimpleName();
+    }
+
+    @Override
+    public boolean isWaitingForPlayersToJoin() {
+        return phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
+    }
+
+    @Override
+    public String gameType() {
+        return "XoGame";
+    }
+
+    @Override
+    public String gameDisplayType() {
+        return "XO Game";
     }
 }
