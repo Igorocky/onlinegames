@@ -2,6 +2,7 @@ package org.igor.onlinegames.xogame.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.igor.onlinegames.common.OnlinegamesUtils;
+import org.igor.onlinegames.exceptions.OnlinegamesException;
 import org.igor.onlinegames.model.GameState;
 import org.igor.onlinegames.model.UserSessionData;
 import org.igor.onlinegames.rpc.RpcMethod;
@@ -23,7 +24,6 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.igor.onlinegames.common.OnlinegamesUtils.listOf;
@@ -99,7 +99,7 @@ public class XoGameState extends State implements GameState {
 
     @RpcMethod
     public void clickCell(WebSocketSession session, int x, int y) {
-        executeOnBehalfOfPlayerVoid(session, player -> clickCell(player, x, y));
+        executeOnBehalfOfPlayer(session, player -> clickCell(player, x, y));
     }
 
     private XoPlayer sessionToMinimalPlayer(WebSocketSession session) {
@@ -124,20 +124,13 @@ public class XoGameState extends State implements GameState {
                 .forEach(session -> sendMessageToFe(session, msg));
     }
 
-    private <T> T executeOnBehalfOfPlayer(WebSocketSession session, Function<XoPlayer, T> executor) {
+    private void executeOnBehalfOfPlayer(WebSocketSession session, Consumer<XoPlayer> executor) {
         final XoPlayer player = extractPlayerFromSession(session);
         if (player != null) {
-            return executor.apply(player);
-        } else {
-            return null;
-        }
-    }
-
-    private void executeOnBehalfOfPlayerVoid(WebSocketSession session, Consumer<XoPlayer> executor) {
-        executeOnBehalfOfPlayer(session, player -> {
             executor.accept(player);
-            return null;
-        });
+        } else {
+            throw new OnlinegamesException("player == null");
+        }
     }
 
     private XoPlayer extractPlayerFromSession(WebSocketSession session) {
@@ -184,7 +177,7 @@ public class XoGameState extends State implements GameState {
                 .count();
     }
 
-    public void clickCell(XoPlayer player, int x, int y) {
+    private void clickCell(XoPlayer player, int x, int y) {
         if (phase == XoGamePhase.IN_PROGRESS) {
             if (!(0 <= x && x < field.length && 0 <= y && y < field[0].length)) {
                 player.sendMessageToFe(XoGameErrorDto.builder()
@@ -214,13 +207,11 @@ public class XoGameState extends State implements GameState {
                 }
                 broadcastGameState();
             }
-        } else {
-            broadcastGameState();
         }
     }
 
     private XoPlayer getNextPlayerToMove() {
-        return players.get(playerToMove.getPlayerId()%players.size());
+        return players.get((playerToMove.getPlayerId()+1)%players.size());
     }
 
     private void broadcastGameState() {

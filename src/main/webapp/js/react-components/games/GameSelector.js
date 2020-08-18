@@ -61,8 +61,8 @@ const GameSelector = ({openView}) => {
     }
 
     function renderButtonList() {
-        return RE.Container.row.left.center({},{},
-            RE.Button({onClick: startNewXoGame}, 'New XO game')
+        return RE.Container.row.left.center({},{style:{marginBottom: '10px'}},
+            RE.Button({variant:"contained", onClick: startNewXoGame}, 'New XO game')
         )
     }
 

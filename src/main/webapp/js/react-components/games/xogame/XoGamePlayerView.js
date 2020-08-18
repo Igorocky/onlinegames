@@ -1,6 +1,6 @@
 "use strict";
 
-const XoGamePlayerView = ({}) => {
+const XoGamePlayerView = ({openView}) => {
     const query = useQuery()
     const gameId = query.get("gameId")
 
@@ -32,11 +32,11 @@ const XoGamePlayerView = ({}) => {
 
     function renderGameStatus() {
         if (beState.phase == "WAITING_FOR_PLAYERS_TO_JOIN") {
-            return RE.Container.col.top.center({},{style:{marginTop: "30px"}},
+            return RE.Container.col.top.center({},{style:{marginBottom: "30px"}},
                 RE.Typography({variant:"h3"},"Waiting for players to join..."),
                 RE.Typography({},'Number of joined players: ' + beState.numberOfWaitingPlayers),
                 beState.currentUserIsGameOwner
-                    ? RE.Button({onClick: () => backend.send('startGame')}, "Start game")
+                    ? RE.Button({variant:"contained", onClick: () => backend.send('startGame')}, "Start game")
                     : null
             )
         } else if (beState.phase == "IN_PROGRESS") {
@@ -46,11 +46,12 @@ const XoGamePlayerView = ({}) => {
                     : ("Waiting for your opponent to respond " + getOpponents()[0].symbol)
             )
         } else if (beState.phase == "FINISHED") {
-            return RE.Container.col.top.center({},{style:{marginTop: "30px"}},
-                RE.Typography({variant:"h3"},"Game over"),
-                RE.Typography({variant:"h4"},
-                    beState.winnerId ? (getWinner().symbol + " wins.") : "It's a draw."
+            return RE.Container.col.top.center({},{},
+                RE.Typography({variant:"h4"},"Game over"),
+                RE.Typography({variant:"h5"},
+                    hasValue(beState.winnerId) ? (getWinner().symbol + " wins.") : "It's a draw."
                 ),
+                RE.Button({onClick: () => openView(VIEW_URLS.gameSelector)}, "New game"),
             )
         }
     }
@@ -69,7 +70,7 @@ const XoGamePlayerView = ({}) => {
 
     function renderPageContent() {
         if (beState) {
-            return RE.Container.col.top.center({},{style:{marginTop:"20px"}},
+            return RE.Container.col.top.center({},{style:{marginBottom:"20px"}},
                 renderGameStatus(),
                 renderField(),
             )
@@ -130,7 +131,7 @@ const XoGamePlayerView = ({}) => {
         )
     }
 
-    return RE.Container.col.top.center({style:{marginTop:"100px"}},{},
+    return RE.Container.col.top.center({style:{marginTop:"20px"}},{},
         renderPageContent()
     )
 }
