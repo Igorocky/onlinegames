@@ -167,6 +167,14 @@ function useBackend({stateType, stateId, onBackendStateCreated, onMessageFromBac
     const backend = {isReady: beStateId != null, send: sendMessageToBeState, call: callMethodOnBeState}
 
     useEffect(() => {
+        return () => {
+            if (webSocket.current) {
+                webSocket.current.close()
+            }
+        }
+    }, [])
+
+    useEffect(() => {
         if (!beStateId) {
             doRpcCall("createNewBackendState", {stateType:stateType}, newStateId => {
                 setBeStateId(newStateId)

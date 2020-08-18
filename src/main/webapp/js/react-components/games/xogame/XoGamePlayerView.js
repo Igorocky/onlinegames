@@ -27,6 +27,8 @@ const XoGamePlayerView = ({openView}) => {
     function onMessageFromBackend(msg) {
         if (msg.type && msg.type == "state") {
             setBeState(msg)
+        } else if (msg.type && msg.type == "error:NoAvailablePlaces") {
+            openView(VIEW_URLS.gameSelector)
         }
     }
 

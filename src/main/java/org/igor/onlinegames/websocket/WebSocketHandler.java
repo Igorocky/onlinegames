@@ -32,11 +32,12 @@ public class WebSocketHandler extends TextWebSocketHandler {
             if (!newStateId.equals(oldStateId)) {
                 if (oldStateId != null) {
                     stateManager.getBackendState(oldStateId).unbind(session);
+                    OnlinegamesUtils.setDestinationStateId(session, null);
                 }
-                stateManager.getBackendState(newStateId).bind(session, request.getParams().get("bindParams"));
-                OnlinegamesUtils.setDestinationStateId(session, newStateId);
+                if (stateManager.getBackendState(newStateId).bind(session, request.getParams().get("bindParams"))) {
+                    OnlinegamesUtils.setDestinationStateId(session, newStateId);
+                }
             }
-            stateManager.getBackendState(newStateId).setLastInMsgAt(Instant.now());
         } else {
             final UUID stateId = stateIdOpt.get();
             executorService.submit(() -> {

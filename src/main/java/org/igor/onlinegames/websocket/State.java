@@ -31,8 +31,9 @@ public abstract class State {
     @Autowired
     private ObjectMapper mapper;
 
-    public synchronized void bind(WebSocketSession session, JsonNode bindParams) {
+    public synchronized boolean bind(WebSocketSession session, JsonNode bindParams) {
         sessions.add(session);
+        return true;
     }
 
     public synchronized void unbind(WebSocketSession session) {

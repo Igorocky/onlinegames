@@ -9,6 +9,7 @@ import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
 import org.igor.onlinegames.xogame.dto.XoCellDto;
 import org.igor.onlinegames.xogame.dto.XoGameErrorDto;
+import org.igor.onlinegames.xogame.dto.XoGameNoAvailablePlacesErrorDto;
 import org.igor.onlinegames.xogame.dto.XoGamePhase;
 import org.igor.onlinegames.xogame.dto.XoGameStateDto;
 import org.igor.onlinegames.xogame.dto.XoPlayerDto;
@@ -43,12 +44,21 @@ public class XoGameState extends State implements GameState {
     private XoPlayer winner;
 
     @Override
-    public synchronized void bind(WebSocketSession session, JsonNode bindParams) {
+    public synchronized boolean bind(WebSocketSession session, JsonNode bindParams) {
         if (gameOwnerUserId == null) {
             gameOwnerUserId = extractUserIdFromSession(session);
         }
-        super.bind(session, bindParams);
-        broadcastGameState();
+        if (getNumberOfWaitingPlayers() >= MAX_NUMBER_OF_PLAYERS) {
+            sendMessageToFe(session, new XoGameNoAvailablePlacesErrorDto("There are no available places left in this game."));
+            return false;
+        } else {
+            if (super.bind(session, bindParams)) {
+                broadcastGameState();
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
 
     @Override
