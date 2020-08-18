@@ -214,6 +214,17 @@ function svgCircle({key, c, r, props}) {
     return SVG.circle({key, cx:c.x, cy:c.y, r, ...props})
 }
 
+/**
+ * @param {string} key
+ * @param {Point[]} points
+ * @param {Object} props
+ * @return {*}
+ */
+function svgPolygon({key, points, props}) {
+    props = props??{}
+    return SVG.polygon({key, points: points.flatMap(point => [point.x, point.y]).join(' '), ...props})
+}
+
 //tests
 function assertTrue(bool) {
     if (!bool) {

@@ -41,6 +41,7 @@ const XoGamePlayfieldComponent = ({size, tableData, onCellClicked}) => {
     function renderSymbol({centerEx, symbol, cellSize}) {
         const key = `cell-symbol-${centerEx.start.x}-${centerEx.start.y}`
         const cellAbsoluteSize = centerEx.length() * cellSize
+        const strokeWidth = cellAbsoluteSize * 0.15;
         if (symbol === 'x') {
             return [
                 centerEx.rotate(45),
@@ -50,7 +51,7 @@ const XoGamePlayfieldComponent = ({size, tableData, onCellClicked}) => {
             ]
                 .map(vec => vec.scale(cellSize*0.35))
                 .map((vec, idx) => vec.toSvgLine({
-                    key: key + '-' + idx, stroke: 'blue', strokeWidth: cellAbsoluteSize * 0.15, strokeLinecap: 'round'
+                    key: key + '-' + idx, stroke: 'blue', strokeWidth, strokeLinecap: 'round'
                 }))
         } else if (symbol === 'o') {
             return [
@@ -58,7 +59,46 @@ const XoGamePlayfieldComponent = ({size, tableData, onCellClicked}) => {
                     key,
                     c: centerEx.start,
                     r: cellAbsoluteSize * 0.3,
-                    props: {fill: 'transparent', stroke: 'orange', strokeWidth: cellAbsoluteSize * 0.15}
+                    props: {fill: 'transparent', stroke: 'orange', strokeWidth}
+                })
+            ]
+        } else if (symbol === 's') {
+            const baseVector = centerEx.rotate(45).scale(cellSize*0.37)
+            return [
+                svgPolygon({
+                    key,
+                    points: [baseVector.end, baseVector.rotate(90).end, baseVector.rotate(180).end, baseVector.rotate(270).end],
+                    props: {fill: 'transparent', stroke: 'crimson', strokeWidth, strokeLinejoin: 'round'}
+                })
+            ]
+        } else if (symbol === 't') {
+            const baseVector = centerEx.rotate(90).translate(null, -cellSize*0.07).scale(cellSize*0.3)
+            return [
+                svgPolygon({
+                    key,
+                    points: [baseVector.end, baseVector.rotate(120).end, baseVector.rotate(-120).end],
+                    props: {fill: 'transparent', stroke: 'green', strokeWidth, strokeLinejoin: 'round'}
+                })
+            ]
+        } else if (symbol === '*') {
+            const baseVector1 = centerEx.rotate(90).scale(cellSize*0.3)
+            const baseVector2 = centerEx.rotate(90+36).scale(cellSize*0.15)
+            return [
+                svgPolygon({
+                    key,
+                    points: [
+                        baseVector1.end,
+                        baseVector2.end,
+                        baseVector1.rotate(72*1).end,
+                        baseVector2.rotate(72*1).end,
+                        baseVector1.rotate(72*2).end,
+                        baseVector2.rotate(72*2).end,
+                        baseVector1.rotate(72*3).end,
+                        baseVector2.rotate(72*3).end,
+                        baseVector1.rotate(72*4).end,
+                        baseVector2.rotate(72*4).end,
+                    ],
+                    props: {fill: 'transparent', stroke: 'mediumorchid', strokeWidth, strokeLinejoin: 'round'}
                 })
             ]
         }

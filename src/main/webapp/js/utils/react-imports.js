@@ -146,6 +146,7 @@ const SVG = {
     circle: reFactory('circle'),
     image: reFactory('image'),
     path: reFactory('path'),
+    polygon: reFactory('polygon'),
     g: reFactory('g'),
 }
 

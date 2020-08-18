@@ -4,8 +4,28 @@ const XoGamePlayerView = ({openView}) => {
     const query = useQuery()
     const gameId = query.get("gameId")
 
-    const backend = useBackend({stateId:gameId, onMessageFromBackend})
-    const [beState, setBeState] = useState(null)
+    // const backend = useBackend({stateId:gameId, onMessageFromBackend})
+    const [beState, setBeState] = useState(
+        {
+            "type": "state",
+            "phase": "IN_PROGRESS",
+            "currentUserIsGameOwner": true,
+            "field": [
+                {"symbol": "o", "x": 0, "y": 1},
+                {"symbol": "x", "x": 1, "y": 1},
+                {"symbol": "s", "x": 2, "y": 1},
+                {"symbol": "t", "x": 2, "y": 2},
+                {"symbol": "*", "x": 2, "y": 0},
+                ],
+            "players": [{"playerId": 0, "gameOwner": false, "symbol": "x"}, {
+                "playerId": 1,
+                "gameOwner": true,
+                "symbol": "o"
+            }],
+            "currentPlayerId": 1,
+            "playerIdToMove": 0
+        }
+    )
 
     const playFieldSizePerCellKey = 'XoGamePlayerView.playFieldSizePerCell'
     const PLAY_FIELD_SIZE_PER_CELL_MIN = 20
