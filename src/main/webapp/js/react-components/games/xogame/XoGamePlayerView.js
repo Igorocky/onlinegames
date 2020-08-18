@@ -7,10 +7,6 @@ const XoGamePlayerView = ({}) => {
     const backend = useBackend({stateId:gameId, onMessageFromBackend})
     const [beState, setBeState] = useState(null)
 
-    useEffect(() => {
-        backend.send('getCurrentState')
-    }, [])
-
     const playFieldSizePerCellKey = 'XoGamePlayerView.playFieldSizePerCell'
     const PLAY_FIELD_SIZE_PER_CELL_MIN = 20
     const PLAY_FIELD_SIZE_PER_CELL_MAX = 300

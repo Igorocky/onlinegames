@@ -48,6 +48,13 @@ public class XoGameState extends State implements GameState {
             gameOwnerUserId = extractUserIdFromSession(session);
         }
         super.bind(session, bindParams);
+        broadcastGameState();
+    }
+
+    @Override
+    public synchronized void unbind(WebSocketSession session) {
+        super.unbind(session);
+        broadcastGameState();
     }
 
     @RpcMethod
@@ -95,13 +102,10 @@ public class XoGameState extends State implements GameState {
         executeOnBehalfOfPlayerVoid(session, player -> clickCell(player, x, y));
     }
 
-    @RpcMethod
-    public XoGameStateDto getCurrentState(WebSocketSession session) {
-        return createViewOfCurrentState(
-                XoPlayer.builder()
-                        .gameOwner(extractUserIdFromSession(session).equals(gameOwnerUserId))
-                        .build()
-        );
+    private XoPlayer sessionToMinimalPlayer(WebSocketSession session) {
+        return XoPlayer.builder()
+                .gameOwner(extractUserIdFromSession(session).equals(gameOwnerUserId))
+                .build();
     }
 
     private XoPlayer createPlayer(UUID userId, int playerId, Character playerSymbol) {
@@ -220,7 +224,11 @@ public class XoGameState extends State implements GameState {
     }
 
     private void broadcastGameState() {
-        players.forEach(player -> player.sendMessageToFe(createViewOfCurrentState(player)));
+        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
+            sessions.forEach(session -> sendMessageToFe(session, createViewOfCurrentState(sessionToMinimalPlayer(session))));
+        } else {
+            players.forEach(player -> player.sendMessageToFe(createViewOfCurrentState(player)));
+        }
     }
 
     private List<XoPlayerDto> createPlayersDto(XoPlayer viewer, List<XoPlayer> players) {
