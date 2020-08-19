@@ -119,6 +119,9 @@ const XoGamePlayerView = ({openView}) => {
         beState.field.forEach(cellDto => {
             tableData[cellDto.x][cellDto.y] = {...tableData[cellDto.x][cellDto.y], ...cellDto}
         })
+        if (beState.winnerPath) {
+            beState.winnerPath.forEach(([x,y]) => tableData[x][y].isWinnerCell=true)
+        }
 
         return RE.Container.row.left.top({},{},
             beState.players?re(XoGameTableOfPlayersComponent, beState):null,

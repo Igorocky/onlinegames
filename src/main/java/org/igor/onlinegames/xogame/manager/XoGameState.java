@@ -306,7 +306,7 @@ public class XoGameState extends State implements GameState {
 
     private List<List<Integer>> createWinnerPath(int startX, int startY, int dx, int dy) {
         final Character symbol = field[startX][startY];
-        if (symbol == null || countPathLength(startX, startY, dx, dy) < 3) {
+        if (symbol == null || countPathLength(startX, startY, dx, dy) < 4) {
             return null;
         } else {
             final ArrayList<List<Integer>> path = new ArrayList<>();

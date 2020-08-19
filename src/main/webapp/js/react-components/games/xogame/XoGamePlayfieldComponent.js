@@ -2,8 +2,6 @@
 
 const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked}) => {
 
-    console.log({tableData})
-
     /**
      * @typedef {Object} SvgElements
      * @property {Object[]} svgElems
@@ -109,6 +107,20 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked}) =
     function renderCell({ex, cellDto, cellSize}) {
         const cellAbsoluteSize = ex.length()*cellSize
         const result = []
+        if (cellDto.isWinnerCell) {
+            result.push(
+                SVG.rect({
+                    key: 'cell-winner-' + ex.start.x + '-' + ex.start.y,
+                    x: ex.start.x,
+                    y: ex.start.y-cellAbsoluteSize,
+                    width: cellAbsoluteSize,
+                    height: cellAbsoluteSize,
+                    stroke: 'none',
+                    strokeWidth: 1,
+                    fill: 'lightyellow'
+                })
+            )
+        }
         if (cellDto.symbol) {
             result.push(
                 ...renderSymbol({
