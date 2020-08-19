@@ -3,13 +3,14 @@
 const NewXoGameDialog = ({openView, onCancel}) => {
 
     const [fieldSize, setFieldSize] = useState(8)
+    const [goal, setGoal] = useState(4)
     const [title, setTitle] = useState(null)
     const [passcode, setPasscode] = useState(null)
 
     function createNewXoGame() {
         doRpcCall(
             "createNewBackendState",
-            {stateType: "XoGame", initParams: {fieldSize, title, passcode}},
+            {stateType: "XoGame", initParams: {fieldSize, title, passcode, goal}},
             gameId => {
                 openView(VIEW_URLS.xoGame({gameId}))
             }
@@ -31,10 +32,32 @@ const NewXoGameDialog = ({openView, onCancel}) => {
                                     {
                                         value: fieldSize,
                                         label:'Field size',
-                                        onChange: event => setFieldSize(event.target.value),
+                                        onChange: event => {
+                                            const newFieldSize = event.target.value;
+                                            setFieldSize(newFieldSize)
+                                            if (newFieldSize<goal) {
+                                                setGoal(newFieldSize)
+                                            }
+                                        },
                                         style: {width: inputElemsWidth}
                                     },
                                     ints(3, 16).map(i => RE.MenuItem({key: i, value: i}, i))
+                                )
+                            )
+                        )
+                    ),
+                    RE.tr({},
+                        RE.td({style: tdStyle},
+                            RE.FormControl({variant:'outlined'},
+                                RE.InputLabel({}, 'Goal'),
+                                RE.Select(
+                                    {
+                                        value: goal,
+                                        label:'Goal',
+                                        onChange: event => setGoal(event.target.value),
+                                        style: {width: inputElemsWidth}
+                                    },
+                                    ints(3, fieldSize).map(i => RE.MenuItem({key: i, value: i}, i))
                                 )
                             )
                         )

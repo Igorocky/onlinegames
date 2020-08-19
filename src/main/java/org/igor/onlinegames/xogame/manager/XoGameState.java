@@ -45,6 +45,7 @@ public class XoGameState extends State implements GameState {
     private static final String TITLE = "title";
     private static final String PASSCODE = "passcode";
     private static final String FIELD_SIZE = "fieldSize";
+    private static final String GOAL = "goal";
 
     private String title;
     private String passcode;
@@ -53,6 +54,7 @@ public class XoGameState extends State implements GameState {
     private UUID gameOwnerUserId;
     private List<XoPlayer> players;
     private int fieldSize;
+    private int goal;
     private Character[][] field;
     private XoPlayer playerToMove;
     private XoPlayer winner;
@@ -62,6 +64,10 @@ public class XoGameState extends State implements GameState {
     protected void init(JsonNode args) {
         fieldSize = args.get(FIELD_SIZE).asInt();
         field = new Character[fieldSize][fieldSize];
+        goal = args.get(GOAL).asInt();
+        if (fieldSize < goal) {
+            throw new OnlinegamesException("fieldSize < goal");
+        }
 
         if (args.has(TITLE)) {
             title = StringUtils.trimToNull(args.get(TITLE).asText(null));
@@ -215,6 +221,7 @@ public class XoGameState extends State implements GameState {
                     .numberOfWaitingPlayers(getNumberOfWaitingPlayers())
                     .currentUserIsGameOwner(player.isGameOwner())
                     .fieldSize(fieldSize)
+                    .goal(goal)
                     .field(createFieldDto(field))
                     .build();
         } else {
@@ -222,6 +229,7 @@ public class XoGameState extends State implements GameState {
                     .phase(phase)
                     .currentUserIsGameOwner(player.isGameOwner())
                     .fieldSize(fieldSize)
+                    .goal(goal)
                     .field(createFieldDto(field))
                     .currentPlayerId(player.getPlayerId())
                     .players(createPlayersDto(player, players))
@@ -345,7 +353,7 @@ public class XoGameState extends State implements GameState {
 
     private List<List<Integer>> createWinnerPath(int startX, int startY, int dx, int dy) {
         final Character symbol = field[startX][startY];
-        if (symbol == null || countPathLength(startX, startY, dx, dy) < 4) {
+        if (symbol == null || countPathLength(startX, startY, dx, dy) < goal) {
             return null;
         } else {
             final ArrayList<List<Integer>> path = new ArrayList<>();

@@ -136,7 +136,10 @@ const XoGamePlayerView = ({openView}) => {
         }
 
         return RE.Container.row.left.top({},{},
-            beState.players?re(XoGameTableOfPlayersComponent, beState):null,
+            RE.Container.col.top.left({style:{marginRight:'10px'}},{style:{marginBottom:'10px'}},
+                RE.span({style:{fontSize:'30px'}}, "Goal: " + beState.goal),
+                beState.players?re(XoGameTableOfPlayersComponent, beState):null,
+            ),
             re(XoGamePlayfieldComponent, {
                 size: playFieldSizePerCell*beState.fieldSize,
                 fieldSize: beState.fieldSize,
