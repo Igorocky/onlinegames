@@ -8,22 +8,25 @@ const XoGamePlayerView = ({openView}) => {
     const [beState, setBeState] = useState(
         {
             "type": "state",
-            "phase": "IN_PROGRESS",
+            "phase": "FINISHED",
             "currentUserIsGameOwner": true,
             "field": [
                 {"symbol": "o", "x": 0, "y": 1},
                 {"symbol": "x", "x": 1, "y": 1},
                 {"symbol": "s", "x": 2, "y": 1},
                 {"symbol": "t", "x": 2, "y": 2},
-                {"symbol": "*", "x": 2, "y": 0},
+                {"symbol": "a", "x": 2, "y": 0},
                 ],
-            "players": [{"playerId": 0, "gameOwner": false, "symbol": "x"}, {
-                "playerId": 1,
-                "gameOwner": true,
-                "symbol": "o"
-            }],
+            "players": [
+                {"playerId": 0, "gameOwner": false, "symbol": "x"},
+                {"playerId": 1, "gameOwner": true, "symbol": "o"},
+                {"playerId": 2, "gameOwner": true, "symbol": "s"},
+                {"playerId": 3, "gameOwner": true, "symbol": "t"},
+                {"playerId": 4, "gameOwner": true, "symbol": "a"},
+                ],
             "currentPlayerId": 1,
-            "playerIdToMove": 0
+            "playerIdToMove": 4,
+            "winnerId": 1
         }
     )
 
@@ -64,17 +67,29 @@ const XoGamePlayerView = ({openView}) => {
         } else if (beState.phase == "IN_PROGRESS") {
             return RE.Typography({variant:"h6"},
                 beState.playerIdToMove == beState.currentPlayerId
-                    ? ("Your turn " + getCurrentPlayer().symbol)
-                    : ("Waiting for your opponent to respond " + getOpponents()[0].symbol)
+                    ? RE.Fragment({}, "Your turn ", symbolToImg(getCurrentPlayer().symbol))
+                    : (`Waiting for your opponent${beState.players.length>2?'s':''} to respond.`)
             )
         } else if (beState.phase == "FINISHED") {
             return RE.Container.col.top.center({},{},
                 RE.Typography({variant:"h4"},"Game over"),
-                RE.Typography({variant:"h5"},
-                    hasValue(beState.winnerId) ? (getWinner().symbol + " wins.") : "It's a draw."
-                ),
+                RE.Typography({variant:"h5"}, renderWinnerInfo()),
                 RE.Button({onClick: () => openView(VIEW_URLS.gameSelector)}, "New game"),
             )
+        }
+    }
+
+    function symbolToImg(symbol) {
+        return RE.img({src:`/img/xogame/${symbol}-symbol.svg`, style: {width:'20px', height:'20px'}})
+    }
+
+    function renderWinnerInfo() {
+        if (hasValue(beState.winnerId)) {
+            return beState.currentPlayerId==beState.winnerId
+                ? RE.span({style:{fontWeight:'bold', color:'forestgreen'}}, "You are the winner!")
+                : RE.Fragment({}, symbolToImg(getWinner().symbol), " wins.")
+        } else {
+            return "It's a draw."
         }
     }
 
@@ -149,7 +164,8 @@ const XoGamePlayerView = ({openView}) => {
                     },
                     RE.Icon({}, 'zoom_out')
                 )
-            )
+            ),
+            re(XoGameTableOfPlayersComponent, beState)
         )
     }
 

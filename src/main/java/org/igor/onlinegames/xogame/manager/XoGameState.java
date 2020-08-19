@@ -34,7 +34,8 @@ import static org.igor.onlinegames.common.OnlinegamesUtils.nullSafeGetter;
 @Scope("prototype")
 public class XoGameState extends State implements GameState {
     private static final String PLAYER_STATE = "playerState";
-    public static final int MAX_NUMBER_OF_PLAYERS = 2;
+    private static final List<Character> POSSIBLE_SYMBOLS = listOf('x','o','s','t','a');
+    public static final int MAX_NUMBER_OF_PLAYERS = POSSIBLE_SYMBOLS.size();
 
     private XoGamePhase phase = XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
     private UUID gameOwnerUserId;
@@ -91,7 +92,7 @@ public class XoGameState extends State implements GameState {
                             .collect(Collectors.toList())
             );
             userIds.add(userId);
-            List<Character> possibleSymbols = new ArrayList<>(listOf('x','o'));
+            List<Character> possibleSymbols = new ArrayList<>(POSSIBLE_SYMBOLS);
             final Random rnd = new Random();
             while (!userIds.isEmpty()) {
                 players.add(createPlayer(

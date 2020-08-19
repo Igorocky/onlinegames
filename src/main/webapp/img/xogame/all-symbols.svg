@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   version="1.1"
+   width="275.6983791814339"
+   height="275.6983791814339"
+   viewBox="-3 -33 36 36"
+   id="svg2"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="all-symbols.svg">
+  <metadata
+     id="metadata60">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs58" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1018"
+     id="namedview56"
+     showgrid="false"
+     inkscape:zoom="0.85600798"
+     inkscape:cx="-63.083524"
+     inkscape:cy="137.84918"
+     inkscape:window-x="1358"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
+  <rect
+     x="-1000"
+     y="-1000"
+     width="2000"
+     height="2000"
+     fill="lightgrey"
+     id="rect4" />
+  <line
+     x1="0"
+     y1="0"
+     x2="1.83697019872103e-15"
+     y2="-30"
+     stroke="white"
+     stroke-width="0.2"
+     id="line6" />
+  <line
+     x1="10"
+     y1="0"
+     x2="10"
+     y2="-30"
+     stroke="white"
+     stroke-width="0.2"
+     id="line8" />
+  <line
+     x1="20"
+     y1="0"
+     x2="20"
+     y2="-30"
+     stroke="white"
+     stroke-width="0.2"
+     id="line10" />
+  <line
+     x1="30"
+     y1="0"
+     x2="30"
+     y2="-30"
+     stroke="white"
+     stroke-width="0.2"
+     id="line12" />
+  <line
+     x1="30"
+     y1="0"
+     x2="0"
+     y2="-1.83697019872103e-15"
+     stroke="white"
+     stroke-width="0.2"
+     id="line14" />
+  <line
+     x1="30"
+     y1="-10"
+     x2="0"
+     y2="-10"
+     stroke="white"
+     stroke-width="0.2"
+     id="line16" />
+  <line
+     x1="30"
+     y1="-20"
+     x2="0"
+     y2="-20"
+     stroke="white"
+     stroke-width="0.2"
+     id="line18" />
+  <line
+     x1="30"
+     y1="-30"
+     x2="0"
+     y2="-30"
+     stroke="white"
+     stroke-width="0.2"
+     id="line20" />
+  <circle
+     cx="5.000000000000001"
+     cy="-15"
+     r="3"
+     fill="transparent"
+     stroke="orange"
+     stroke-width="1.5"
+     id="circle24"
+     style="fill:none" />
+  <line
+     x1="15"
+     y1="-15"
+     x2="17.47487373415292"
+     y2="-17.47487373415292"
+     stroke="blue"
+     stroke-width="1.5"
+     stroke-linecap="round"
+     id="line32" />
+  <line
+     x1="15"
+     y1="-15"
+     x2="12.525126265847081"
+     y2="-17.47487373415292"
+     stroke="blue"
+     stroke-width="1.5"
+     stroke-linecap="round"
+     id="line34" />
+  <line
+     x1="15"
+     y1="-15"
+     x2="17.47487373415292"
+     y2="-12.525126265847081"
+     stroke="blue"
+     stroke-width="1.5"
+     stroke-linecap="round"
+     id="line36" />
+  <line
+     x1="15"
+     y1="-15"
+     x2="12.525126265847081"
+     y2="-12.525126265847081"
+     stroke="blue"
+     stroke-width="1.5"
+     stroke-linecap="round"
+     id="line38" />
+  <polygon
+     points="25 -8 24.11832212156129 -6.213525491562422 22.14683045111454 -5.927050983124842 23.57341522555727 -4.53647450843758 23.23664424312258 -2.572949016875158 25 -3.5000000000000004 26.76335575687742 -2.5729490168751576 26.42658477444273 -4.5364745084375775 27.85316954888546 -5.9270509831248415 25.881677878438712 -6.21352549156242"
+     fill="transparent"
+     stroke="mediumorchid"
+     stroke-width="1.5"
+     stroke-linejoin="round"
+     id="polygon44"
+     style="fill:none" />
+  <polygon
+     points="27.61629509039022 -17.616295090390228 22.383704909609772 -17.61629509039022 22.38370490960978 -12.383704909609772 27.616295090390228 -12.38370490960978"
+     fill="transparent"
+     stroke="crimson"
+     stroke-width="1.5"
+     stroke-linejoin="round"
+     id="polygon48"
+     style="fill:none" />
+  <polygon
+     points="25 -27.3 22.401923788646684 -22.8 27.598076211353316 -22.8"
+     fill="transparent"
+     stroke="green"
+     stroke-width="1.5"
+     stroke-linejoin="round"
+     id="polygon52"
+     style="fill:none" />
+</svg>

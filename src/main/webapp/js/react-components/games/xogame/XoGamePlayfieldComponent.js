@@ -80,7 +80,7 @@ const XoGamePlayfieldComponent = ({size, tableData, onCellClicked}) => {
                     props: {fill: 'transparent', stroke: 'green', strokeWidth, strokeLinejoin: 'round'}
                 })
             ]
-        } else if (symbol === '*') {
+        } else if (symbol === 'a') {
             const baseVector1 = centerEx.rotate(90).scale(cellSize*0.3)
             const baseVector2 = centerEx.rotate(90+36).scale(cellSize*0.15)
             return [

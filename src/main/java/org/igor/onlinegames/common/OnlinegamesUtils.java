@@ -1,5 +1,6 @@
 package org.igor.onlinegames.common;
 
+import org.hibernate.validator.internal.util.CollectionHelper;
 import org.igor.onlinegames.exceptions.OnlinegamesException;
 import org.igor.onlinegames.model.UserSessionData;
 import org.springframework.web.socket.WebSocketSession;
@@ -255,7 +256,7 @@ public class OnlinegamesUtils {
     }
 
     public static <E> List<E> listOf(E... elems) {
-        return Arrays.asList(elems);
+        return CollectionHelper.toImmutableList(Arrays.asList(elems));
     }
 
     public static <E> Set<E> setOf(E... elems) {
