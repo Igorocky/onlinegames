@@ -24,6 +24,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -40,9 +41,17 @@ public class XoGameState extends State implements GameState {
     private XoGamePhase phase = XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
     private UUID gameOwnerUserId;
     private List<XoPlayer> players;
+    private int fieldSize;
     private Character[][] field;
     private XoPlayer playerToMove;
     private XoPlayer winner;
+    private List<List<Integer>> winnerPath;
+
+    @Override
+    protected void init(JsonNode args) {
+        fieldSize = args.get("fieldSize").asInt();
+        field = new Character[fieldSize][fieldSize];
+    }
 
     @Override
     public synchronized boolean bind(WebSocketSession session, JsonNode bindParams) {
@@ -102,7 +111,6 @@ public class XoGameState extends State implements GameState {
                 ));
             }
             playerToMove = players.get(0);
-            field = new Character[3][3];
             phase = XoGamePhase.IN_PROGRESS;
             broadcastGameState();
         }
@@ -167,16 +175,20 @@ public class XoGameState extends State implements GameState {
                     .phase(phase)
                     .numberOfWaitingPlayers(getNumberOfWaitingPlayers())
                     .currentUserIsGameOwner(player.isGameOwner())
+                    .fieldSize(fieldSize)
+                    .field(createFieldDto(field))
                     .build();
         } else {
             return XoGameStateDto.builder()
                     .phase(phase)
                     .currentUserIsGameOwner(player.isGameOwner())
+                    .fieldSize(fieldSize)
                     .field(createFieldDto(field))
                     .currentPlayerId(player.getPlayerId())
                     .players(createPlayersDto(player, players))
                     .playerIdToMove(nullSafeGetter(playerToMove, XoPlayer::getPlayerId))
                     .winnerId(nullSafeGetter(winner, XoPlayer::getPlayerId))
+                    .winnerPath(winnerPath)
                     .build();
         }
     }
@@ -202,9 +214,10 @@ public class XoGameState extends State implements GameState {
             } else {
                 field[x][y] = player.getPlayerSymbol();
 
-                Character winnerSymbol = findWinnerSymbol();
-                if (winnerSymbol != null) {
+                winnerPath = findWinnerPath();
+                if (winnerPath != null) {
                     playerToMove = null;
+                    Character winnerSymbol = field[winnerPath.get(0).get(0)][winnerPath.get(0).get(1)];
                     winner = players.stream()
                             .filter(xoPlayer -> winnerSymbol.equals(xoPlayer.getPlayerSymbol()))
                             .findFirst()
@@ -261,38 +274,71 @@ public class XoGameState extends State implements GameState {
         return cellsDto;
     }
 
-    private Character findWinnerSymbol() {
-        if (allCellsAreOfSameSymbol(0, 0, 0, 1, 0, 2)) {
-            return field[0][0];
-        } else if (allCellsAreOfSameSymbol(1, 0, 1, 1, 1, 2)) {
-            return field[1][0];
-        } else if (allCellsAreOfSameSymbol(2, 0, 2, 1, 2, 2)) {
-            return field[2][0];
-        } else if (allCellsAreOfSameSymbol(0, 0, 1, 0, 2, 0)) {
-            return field[0][0];
-        } else if (allCellsAreOfSameSymbol(0, 1, 1, 1, 2, 1)) {
-            return field[0][1];
-        } else if (allCellsAreOfSameSymbol(0, 2, 1, 2, 2, 2)) {
-            return field[0][2];
-        } else if (allCellsAreOfSameSymbol(0, 0, 1, 1, 2, 2)) {
-            return field[0][0];
-        } else if (allCellsAreOfSameSymbol(0, 2, 1, 1, 2, 0)) {
-            return field[0][2];
+    private void iterateCells(int x, int y, int dx, int dy, BiFunction<Integer, Integer, Boolean> coordsConsumer) {
+        if (dx == 0 && dy == 0) {
+            return;
         } else {
-            return null;
+            int maxX = fieldSize-1;
+            int maxY = fieldSize-1;
+            while (0<=x && x<=maxX && 0<=y && y<=maxY && coordsConsumer.apply(x,y)) {
+                x+=dx;
+                y+=dy;
+            }
         }
+    }
+
+    private int countPathLength(int startX, int startY, int dx, int dy) {
+        final Character symbol = field[startX][startY];
+        if (symbol == null) {
+            return 0;
+        } else {
+            final int[] length = {0};
+            iterateCells(startX, startY, dx, dy, (x,y) -> {
+                final boolean doContinue = symbol.equals(field[x][y]);
+                if (doContinue) {
+                    length[0]++;
+                }
+                return doContinue;
+            });
+            return length[0];
+        }
+    }
+
+    private List<List<Integer>> createWinnerPath(int startX, int startY, int dx, int dy) {
+        final Character symbol = field[startX][startY];
+        if (symbol == null || countPathLength(startX, startY, dx, dy) < 3) {
+            return null;
+        } else {
+            final ArrayList<List<Integer>> path = new ArrayList<>();
+            iterateCells(startX, startY, dx, dy, (x,y) -> {
+                final boolean doContinue = symbol.equals(field[x][y]);
+                if (doContinue) {
+                    path.add(listOf(x,y));
+                }
+                return doContinue;
+            });
+            return path;
+        }
+    }
+
+    private List<List<Integer>> findWinnerPath() {
+        for (int x = 0; x < fieldSize; x++) {
+            for (int y = 0; y < fieldSize; y++) {
+                for (int dx = -1; dx < 2; dx++) {
+                    for (int dy = -1; dy < 2; dy++) {
+                        List<List<Integer>> winnerPath = createWinnerPath(x, y, dx, dy);
+                        if (winnerPath != null) {
+                            return winnerPath;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private boolean isDraw() {
         return !Arrays.asList(field).stream().flatMap(r -> Arrays.asList(r).stream()).anyMatch(Objects::isNull);
-    }
-
-    private boolean allCellsAreOfSameSymbol(int x1, int y1, int x2, int y2, int x3, int y3) {
-        return field[x1][y1] != null
-                && field[x2][y2] != null
-                && field[x3][y3] != null
-                && field[x1][y1].equals(field[x2][y2])
-                && field[x2][y2].equals(field[x3][y3]);
     }
 
     @Override

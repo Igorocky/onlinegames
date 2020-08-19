@@ -1,6 +1,8 @@
 "use strict";
 
-const XoGamePlayfieldComponent = ({size, tableData, onCellClicked}) => {
+const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked}) => {
+
+    console.log({tableData})
 
     /**
      * @typedef {Object} SvgElements
@@ -188,8 +190,8 @@ const XoGamePlayfieldComponent = ({size, tableData, onCellClicked}) => {
             key: 'XOGrid',
             ex,
             stepSize: cellSize,
-            colNum: 3,
-            rowNum: 3,
+            colNum: fieldSize,
+            rowNum: fieldSize,
             props: {stroke:'white', strokeWidth: 0.2}
         })
 

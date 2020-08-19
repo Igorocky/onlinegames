@@ -13,9 +13,11 @@ public class XoGameStateDto implements XoGameDto {
     private XoGamePhase phase;
     private Long numberOfWaitingPlayers;
     private boolean currentUserIsGameOwner;
+    private int fieldSize;
     private List<XoCellDto> field;
     private List<XoPlayerDto> players;
     private Integer currentPlayerId;
     private Integer playerIdToMove;
     private Integer winnerId;
+    private List<List<Integer>> winnerPath;
 }

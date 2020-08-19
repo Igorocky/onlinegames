@@ -3,7 +3,7 @@
 const XoGameTableOfPlayersComponent = ({players, currentPlayerId, playerIdToMove}) => {
     const symbolSize = "20px"
 
-    return RE.table({style:{marginLeft:'15px'}},
+    return RE.table({style:{marginRight:'15px'}},
         RE.tbody({},
             players.map(player => RE.tr({key:player.playerId},
                 RE.td({},

@@ -4,31 +4,8 @@ const XoGamePlayerView = ({openView}) => {
     const query = useQuery()
     const gameId = query.get("gameId")
 
-    // const backend = useBackend({stateId:gameId, onMessageFromBackend})
-    const [beState, setBeState] = useState(
-        {
-            "type": "state",
-            "phase": "FINISHED",
-            "currentUserIsGameOwner": true,
-            "field": [
-                {"symbol": "o", "x": 0, "y": 1},
-                {"symbol": "x", "x": 1, "y": 1},
-                {"symbol": "s", "x": 2, "y": 1},
-                {"symbol": "t", "x": 2, "y": 2},
-                {"symbol": "a", "x": 2, "y": 0},
-                ],
-            "players": [
-                {"playerId": 0, "gameOwner": false, "symbol": "x"},
-                {"playerId": 1, "gameOwner": true, "symbol": "o"},
-                {"playerId": 2, "gameOwner": true, "symbol": "s"},
-                {"playerId": 3, "gameOwner": true, "symbol": "t"},
-                {"playerId": 4, "gameOwner": true, "symbol": "a"},
-                ],
-            "currentPlayerId": 1,
-            "playerIdToMove": 4,
-            "winnerId": 1
-        }
-    )
+    const backend = useBackend({stateId:gameId, onMessageFromBackend})
+    const [beState, setBeState] = useState(null)
 
     const playFieldSizePerCellKey = 'XoGamePlayerView.playFieldSizePerCell'
     const PLAY_FIELD_SIZE_PER_CELL_MIN = 20
@@ -133,9 +110,9 @@ const XoGamePlayerView = ({openView}) => {
             return null
         }
         const tableData = []
-        for (let x = 0; x < 3; x++) {
+        for (let x = 0; x < beState.fieldSize; x++) {
             tableData.push([])
-            for (let y = 0; y < 3; y++) {
+            for (let y = 0; y < beState.fieldSize; y++) {
                 tableData[x].push({x,y})
             }
         }
@@ -144,8 +121,10 @@ const XoGamePlayerView = ({openView}) => {
         })
 
         return RE.Container.row.left.top({},{},
+            beState.players?re(XoGameTableOfPlayersComponent, beState):null,
             re(XoGamePlayfieldComponent, {
-                size: playFieldSizePerCell*3,
+                size: playFieldSizePerCell*beState.fieldSize,
+                fieldSize: beState.fieldSize,
                 tableData,
                 onCellClicked: cellClicked
             }),
@@ -165,7 +144,6 @@ const XoGamePlayerView = ({openView}) => {
                     RE.Icon({}, 'zoom_out')
                 )
             ),
-            re(XoGameTableOfPlayersComponent, beState)
         )
     }
 

@@ -5,6 +5,8 @@ const GameSelector = ({openView}) => {
     const [availableNewGames, setAvailableNewGames] = useState(null)
     const timerHandle = useRef(null)
 
+    const [openedDialog, setOpenedDialog] = useState(null)
+
     useEffect(() => {
         loadListOfAvailableNewGames()
         return () => {
@@ -62,14 +64,15 @@ const GameSelector = ({openView}) => {
 
     function renderButtonList() {
         return RE.Container.row.left.center({},{style:{marginBottom: '10px'}},
-            RE.Button({variant:"contained", onClick: startNewXoGame}, 'New XO game')
+            RE.Button({variant:"contained", onClick: () => setOpenedDialog(() => NewXoGameDialog)}, 'New XO game')
         )
     }
 
     return RE.Container.col.top.center({style:{marginTop:'100px'}},{},
         RE.Container.col.top.left({},{},
             renderButtonList(),
-            renderTableWithAvailableNewGames()
+            renderTableWithAvailableNewGames(),
+            openedDialog ? re(openedDialog, {openView, onCancel: () => setOpenedDialog(null)}) : null,
         )
     )
 }
