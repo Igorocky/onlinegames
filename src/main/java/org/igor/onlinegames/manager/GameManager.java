@@ -1,5 +1,6 @@
 package org.igor.onlinegames.manager;
 
+import org.apache.commons.lang3.StringUtils;
 import org.igor.onlinegames.model.GameInfoDto;
 import org.igor.onlinegames.model.GameState;
 import org.igor.onlinegames.rpc.RpcMethod;
@@ -30,6 +31,8 @@ public class GameManager {
                             .gameId(entry.getKey())
                             .gameType(gameState.gameType())
                             .gameDisplayType(gameState.gameDisplayType())
+                            .title(StringUtils.abbreviate(gameState.getTitle(), 50))
+                            .hasPasscode(gameState.hasPasscode())
                             .build();
                 }).collect(Collectors.toList());
     }

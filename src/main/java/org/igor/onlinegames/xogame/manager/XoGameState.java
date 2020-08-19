@@ -1,6 +1,7 @@
 package org.igor.onlinegames.xogame.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.commons.lang3.StringUtils;
 import org.igor.onlinegames.common.OnlinegamesUtils;
 import org.igor.onlinegames.exceptions.OnlinegamesException;
 import org.igor.onlinegames.model.GameState;
@@ -9,7 +10,9 @@ import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
 import org.igor.onlinegames.xogame.dto.XoCellDto;
 import org.igor.onlinegames.xogame.dto.XoGameErrorDto;
+import org.igor.onlinegames.xogame.dto.XoGameIncorrectPasscodeErrorDto;
 import org.igor.onlinegames.xogame.dto.XoGameNoAvailablePlacesErrorDto;
+import org.igor.onlinegames.xogame.dto.XoGamePasscodeIsRequiredErrorDto;
 import org.igor.onlinegames.xogame.dto.XoGamePhase;
 import org.igor.onlinegames.xogame.dto.XoGameStateDto;
 import org.igor.onlinegames.xogame.dto.XoPlayerDto;
@@ -19,10 +22,12 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -37,7 +42,13 @@ public class XoGameState extends State implements GameState {
     private static final String PLAYER_STATE = "playerState";
     private static final List<Character> POSSIBLE_SYMBOLS = listOf('x','o','s','t','a');
     public static final int MAX_NUMBER_OF_PLAYERS = POSSIBLE_SYMBOLS.size();
+    private static final String TITLE = "title";
+    private static final String PASSCODE = "passcode";
+    private static final String FIELD_SIZE = "fieldSize";
 
+    private String title;
+    private String passcode;
+    private Set<UUID> userIdsEverConnected = new HashSet<>();
     private XoGamePhase phase = XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
     private UUID gameOwnerUserId;
     private List<XoPlayer> players;
@@ -49,8 +60,15 @@ public class XoGameState extends State implements GameState {
 
     @Override
     protected void init(JsonNode args) {
-        fieldSize = args.get("fieldSize").asInt();
+        fieldSize = args.get(FIELD_SIZE).asInt();
         field = new Character[fieldSize][fieldSize];
+
+        if (args.has(TITLE)) {
+            title = StringUtils.trimToNull(args.get(TITLE).asText(null));
+        }
+        if (args.has(PASSCODE)) {
+            passcode = StringUtils.trimToNull(args.get(PASSCODE).asText(null));
+        }
     }
 
     @Override
@@ -59,10 +77,13 @@ public class XoGameState extends State implements GameState {
             gameOwnerUserId = extractUserIdFromSession(session);
         }
         if (getNumberOfWaitingPlayers() >= MAX_NUMBER_OF_PLAYERS) {
-            sendMessageToFe(session, new XoGameNoAvailablePlacesErrorDto("There are no available places left in this game."));
+            sendMessageToFe(session, new XoGameNoAvailablePlacesErrorDto());
+            return false;
+        } else if (!checkPasscode(session, bindParams)) {
             return false;
         } else {
             if (super.bind(session, bindParams)) {
+                userIdsEverConnected.add(extractUserIdFromSession(session));
                 broadcastGameState();
                 return true;
             } else {
@@ -121,6 +142,22 @@ public class XoGameState extends State implements GameState {
         executeOnBehalfOfPlayer(session, player -> clickCell(player, x, y));
     }
 
+    private boolean checkPasscode(WebSocketSession session, JsonNode bindParams) {
+        if (passcode == null || sessions.isEmpty() || userIdsEverConnected.contains(extractUserIdFromSession(session))) {
+            return true;
+        } else if (bindParams != null && bindParams.has(PASSCODE)) {
+            String userProvidedPasscode = StringUtils.trimToNull(bindParams.get(PASSCODE).asText(null));
+            final boolean passcodeMatches = passcode.equals(userProvidedPasscode);
+            if (!passcodeMatches) {
+                sendMessageToFe(session, new XoGameIncorrectPasscodeErrorDto());
+            }
+            return passcodeMatches;
+        } else {
+            sendMessageToFe(session, new XoGamePasscodeIsRequiredErrorDto());
+            return false;
+        }
+    }
+
     private XoPlayer sessionToMinimalPlayer(WebSocketSession session) {
         return XoPlayer.builder()
                 .gameOwner(extractUserIdFromSession(session).equals(gameOwnerUserId))
@@ -172,6 +209,8 @@ public class XoGameState extends State implements GameState {
     private XoGameStateDto createViewOfCurrentState(XoPlayer player) {
         if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
             return XoGameStateDto.builder()
+                    .title(title)
+                    .passcode(player.ifGameOwner(() -> passcode))
                     .phase(phase)
                     .numberOfWaitingPlayers(getNumberOfWaitingPlayers())
                     .currentUserIsGameOwner(player.isGameOwner())
@@ -359,5 +398,15 @@ public class XoGameState extends State implements GameState {
     @Override
     public String gameDisplayType() {
         return "XO Game";
+    }
+
+    @Override
+    public String getTitle() {
+        return title;
+    }
+
+    @Override
+    public boolean hasPasscode() {
+        return passcode != null;
     }
 }

@@ -10,6 +10,8 @@ import java.util.List;
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class XoGameStateDto implements XoGameDto {
+    private String title;
+    private String passcode;
     private XoGamePhase phase;
     private Long numberOfWaitingPlayers;
     private boolean currentUserIsGameOwner;

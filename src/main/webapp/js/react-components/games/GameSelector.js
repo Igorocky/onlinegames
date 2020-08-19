@@ -45,12 +45,16 @@ const GameSelector = ({openView}) => {
                         RE.TableHead({},
                             RE.TableRow({},
                                 RE.TableCell({}, 'Type'),
+                                RE.TableCell({}, 'Title'),
+                                RE.TableCell({}, ''),
                                 RE.TableCell({}, ''),
                             )
                         ),
                         RE.TableBody({},
                             availableNewGames.map(gameDto => RE.TableRow({key:gameDto.gameId},
                                 RE.TableCell({}, gameDto.gameDisplayType),
+                                RE.TableCell({}, gameDto.title),
+                                RE.TableCell({}, gameDto.hasPasscode?RE.Icon({fontSize:'small'}, 'lock'):null),
                                 RE.TableCell({}, RE.Button({onClick: () => joinGame(gameDto.gameType, gameDto.gameId)}, "Join")),
                             ))
                         )

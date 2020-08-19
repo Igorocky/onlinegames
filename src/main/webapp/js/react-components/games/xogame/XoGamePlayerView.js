@@ -5,6 +5,8 @@ const XoGamePlayerView = ({openView}) => {
     const gameId = query.get("gameId")
 
     const backend = useBackend({stateId:gameId, onMessageFromBackend})
+    const [passcode, setPasscode] = useState(null)
+    const [incorrectPasscode, setIncorrectPasscode] = useState(false)
     const [beState, setBeState] = useState(null)
 
     const playFieldSizePerCellKey = 'XoGamePlayerView.playFieldSizePerCell'
@@ -26,20 +28,32 @@ const XoGamePlayerView = ({openView}) => {
 
     function onMessageFromBackend(msg) {
         if (msg.type && msg.type == "state") {
+            setPasscode(null)
             setBeState(msg)
         } else if (msg.type && msg.type == "error:NoAvailablePlaces") {
             openView(VIEW_URLS.gameSelector)
+        } else if (msg.type && msg.type == "error:PasscodeRequired") {
+            setPasscode("")
+        } else if (msg.type && msg.type == "error:IncorrectPasscode") {
+            setIncorrectPasscode(true)
         }
+    }
+
+    function goToGameSelector() {
+        openView(VIEW_URLS.gameSelector)
     }
 
     function renderGameStatus() {
         if (beState.phase == "WAITING_FOR_PLAYERS_TO_JOIN") {
-            return RE.Container.col.top.center({},{style:{marginBottom: "30px"}},
-                RE.Typography({variant:"h3"},"Waiting for players to join..."),
+            return RE.Container.col.top.center({},{style:{marginBottom: "15px"}},
+                RE.Typography({variant:"h3"},(hasValue(beState.title)?(beState.title + ': '):'') + 'Waiting for players to join...'),
                 RE.Typography({},'Number of joined players: ' + beState.numberOfWaitingPlayers),
+                (beState.currentUserIsGameOwner && hasValue(beState.passcode))
+                    ? RE.Typography({},'Passcode: ' + beState.passcode)
+                    : null,
                 beState.currentUserIsGameOwner
                     ? RE.Button({variant:"contained", onClick: () => backend.send('startGame')}, "Start game")
-                    : null
+                    : null,
             )
         } else if (beState.phase == "IN_PROGRESS") {
             return RE.Typography({variant:"h6"},
@@ -51,7 +65,7 @@ const XoGamePlayerView = ({openView}) => {
             return RE.Container.col.top.center({},{},
                 RE.Typography({variant:"h4"},"Game over"),
                 RE.Typography({variant:"h5"}, renderWinnerInfo()),
-                RE.Button({onClick: () => openView(VIEW_URLS.gameSelector)}, "New game"),
+                RE.Button({onClick: goToGameSelector}, "New game"),
             )
         }
     }
@@ -64,7 +78,7 @@ const XoGamePlayerView = ({openView}) => {
         if (hasValue(beState.winnerId)) {
             return beState.currentPlayerId==beState.winnerId
                 ? RE.span({style:{fontWeight:'bold', color:'forestgreen'}}, "You are the winner!")
-                : RE.Fragment({}, symbolToImg(getWinner().symbol), " wins.")
+                : RE.Fragment({}, symbolToImg(getWinner().symbol), " won.")
         } else {
             return "It's a draw."
         }
@@ -78,16 +92,14 @@ const XoGamePlayerView = ({openView}) => {
         return beState.players.find(player => player.playerId == beState.currentPlayerId)
     }
 
-    function getOpponents() {
-        return beState.players.filter(player => player.playerId != beState.currentPlayerId)
-    }
-
     function renderPageContent() {
         if (beState) {
             return RE.Container.col.top.center({},{style:{marginBottom:"20px"}},
                 renderGameStatus(),
                 renderField(),
             )
+        } else if (hasValue(passcode)) {
+            return renderPasscodeDialog()
         } else {
             return RE.CircularProgress()
         }
@@ -146,6 +158,47 @@ const XoGamePlayerView = ({openView}) => {
                     },
                     RE.Icon({}, 'zoom_out')
                 )
+            ),
+        )
+    }
+
+    function sendPasscode() {
+        backend.send(BIND_TO_BE_STATE_METHOD_NAME, {stateId: gameId, bindParams:{passcode}})
+    }
+
+    function renderPasscodeDialog() {
+        const tdStyle = {padding:'10px'}
+        const inputElemsWidth = '200px';
+        return RE.Dialog({open: true},
+            RE.DialogTitle({}, 'Enter passcode'),
+            RE.DialogContent({dividers:true},
+                RE.table({},
+                    RE.tbody({},
+                        RE.tr({},
+                            RE.td({style: tdStyle}, 'This game requires passcode.')
+                        ),
+                        incorrectPasscode?RE.tr({},
+                            RE.td({style: tdStyle}, 'You\'ve entered incorrect passcode.')
+                        ):null,
+                        RE.tr({},
+                            RE.td({style: tdStyle},
+                                RE.TextField(
+                                    {
+                                        variant: 'outlined', label: 'Passcode', autoFocus:true,
+                                        onKeyDown: event => event.nativeEvent.keyCode == 13 ? sendPasscode() : null,
+                                        style: {width: inputElemsWidth},
+                                        onChange: event => setPasscode(event.target.value),
+                                    },
+                                    passcode
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            RE.DialogActions({},
+                RE.Button({color:'primary', onClick: goToGameSelector }, 'Cancel'),
+                RE.Button({variant:"contained", color:'primary', onClick: sendPasscode}, 'Send'),
             ),
         )
     }

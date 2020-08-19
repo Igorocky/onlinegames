@@ -11,4 +11,6 @@ public class GameInfoDto {
     private UUID gameId;
     private String gameType;
     private String gameDisplayType;
+    private String title;
+    private boolean hasPasscode;
 }
