@@ -75,6 +75,7 @@ public class GameManager {
                             .gameType(gameState.gameType())
                             .gameDisplayType(gameState.gameDisplayType())
                             .title(StringUtils.abbreviate(gameState.getTitle(), 50))
+                            .shortDescription(gameState.getShortDescription())
                             .hasPasscode(gameState.hasPasscode())
                             .build();
                 }).collect(Collectors.toList());

@@ -6,4 +6,5 @@ public interface GameState {
     String gameDisplayType();
     String getTitle();
     boolean hasPasscode();
+    String getShortDescription();
 }

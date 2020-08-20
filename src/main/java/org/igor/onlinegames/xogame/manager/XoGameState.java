@@ -179,7 +179,9 @@ public class XoGameState extends State implements GameState {
 
     @RpcMethod
     public synchronized void clickCell(WebSocketSession session, int x, int y) {
-        executeOnBehalfOfPlayer(session, player -> clickCell(player, x, y));
+        if (phase == XoGamePhase.IN_PROGRESS) {
+            executeOnBehalfOfPlayer(session, player -> clickCell(player, x, y));
+        }
     }
 
     private boolean checkPasscode(WebSocketSession session, JsonNode bindParams) {
@@ -520,5 +522,10 @@ public class XoGameState extends State implements GameState {
     @Override
     public boolean hasPasscode() {
         return passcode != null;
+    }
+
+    @Override
+    public String getShortDescription() {
+        return "F " + fieldSize + " / G " + goal + (timerSeconds == null ? "" : " / T " + timerSeconds);
     }
 }
