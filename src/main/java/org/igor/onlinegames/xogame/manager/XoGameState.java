@@ -185,7 +185,8 @@ public class XoGameState extends State implements GameState {
     }
 
     private boolean checkPasscode(WebSocketSession session, JsonNode bindParams) {
-        if (passcode == null || sessions.isEmpty() || userIdsEverConnected.contains(extractUserIdFromSession(session))) {
+        final UUID userId = extractUserIdFromSession(session);
+        if (passcode == null || userId.equals(gameOwnerUserId) || userIdsEverConnected.contains(userId)) {
             return true;
         } else if (bindParams != null && bindParams.has(PASSCODE)) {
             String userProvidedPasscode = StringUtils.trimToNull(bindParams.get(PASSCODE).asText(null));
