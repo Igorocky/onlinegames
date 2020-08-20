@@ -18,6 +18,7 @@ public class XoGameStateDto implements XoGameDto {
     private int fieldSize;
     private int goal;
     private List<XoCellDto> field;
+    private List<Integer> lastCell;
     private List<XoPlayerDto> players;
     private Integer currentPlayerId;
     private Integer playerIdToMove;

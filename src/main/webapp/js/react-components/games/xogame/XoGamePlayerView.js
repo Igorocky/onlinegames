@@ -134,6 +134,11 @@ const XoGamePlayerView = ({openView}) => {
         if (beState.winnerPath) {
             beState.winnerPath.forEach(([x,y]) => tableData[x][y].isWinnerCell=true)
         }
+        if (beState.lastCell) {
+            const lastCellX = beState.lastCell[0];
+            const lastCellY = beState.lastCell[1];
+            tableData[lastCellX][lastCellY] = {...tableData[lastCellX][lastCellY], lastCell:{x:lastCellX, y:lastCellY}}
+        }
 
         return RE.Container.row.left.top({},{},
             RE.Container.col.top.left({style:{marginRight:'10px'}},{style:{marginBottom:'10px'}},

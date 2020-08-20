@@ -121,6 +121,20 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked}) =
                 })
             )
         }
+        if (cellDto.lastCell) {
+            result.push(
+                SVG.rect({
+                    key: 'cell-last-' + ex.start.x + '-' + ex.start.y,
+                    x: ex.start.x,
+                    y: ex.start.y-cellAbsoluteSize,
+                    width: cellAbsoluteSize,
+                    height: cellAbsoluteSize,
+                    stroke: 'none',
+                    strokeWidth: 1,
+                    fill: 'mistyrose'
+                })
+            )
+        }
         if (cellDto.symbol) {
             result.push(
                 ...renderSymbol({

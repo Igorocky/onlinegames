@@ -56,6 +56,7 @@ public class XoGameState extends State implements GameState {
     private int fieldSize;
     private int goal;
     private Character[][] field;
+    private List<Integer> lastCell;
     private XoPlayer playerToMove;
     private XoPlayer winner;
     private List<List<Integer>> winnerPath;
@@ -231,6 +232,7 @@ public class XoGameState extends State implements GameState {
                     .fieldSize(fieldSize)
                     .goal(goal)
                     .field(createFieldDto(field))
+                    .lastCell(lastCell)
                     .currentPlayerId(player.getPlayerId())
                     .players(createPlayersDto(player, players))
                     .playerIdToMove(nullSafeGetter(playerToMove, XoPlayer::getPlayerId))
@@ -260,6 +262,7 @@ public class XoGameState extends State implements GameState {
                 );
             } else {
                 field[x][y] = player.getPlayerSymbol();
+                lastCell = listOf(x,y);
 
                 winnerPath = findWinnerPath();
                 if (winnerPath != null) {
