@@ -3,7 +3,6 @@ package org.igor.onlinegames.websocket;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.igor.onlinegames.exceptions.OnlinegamesException;
 import org.igor.onlinegames.rpc.Default;
-import org.igor.onlinegames.rpc.RpcAutowiredParamsLookup;
 import org.igor.onlinegames.rpc.RpcDispatcher;
 import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.rpc.RpcMethodsCollection;
@@ -16,17 +15,17 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.time.Clock;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @RpcMethodsCollection
 @Component
 public class StateManager {
     private static final Logger LOG = LoggerFactory.getLogger(StateManager.class);
-    private Map<UUID, State> states = new HashMap<>();
+    private Map<UUID, State> states = new ConcurrentHashMap<>();
 
     @Autowired
     private ApplicationContext applicationContext;

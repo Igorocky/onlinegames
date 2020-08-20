@@ -3,23 +3,24 @@ package org.igor.onlinegames.websocket;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.igor.onlinegames.common.OnlinegamesUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class WebSocketHandler extends TextWebSocketHandler {
     @Autowired
     private StateManager stateManager;
     @Autowired
     private ObjectMapper mapper;
-    private ExecutorService executorService = Executors.newFixedThreadPool(10);
+    @Autowired
+    @Qualifier("executorService")
+    private ExecutorService executorService;
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {

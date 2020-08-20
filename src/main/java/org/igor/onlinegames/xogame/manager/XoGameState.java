@@ -144,7 +144,7 @@ public class XoGameState extends State implements GameState {
     }
 
     @RpcMethod
-    public void clickCell(WebSocketSession session, int x, int y) {
+    public synchronized void clickCell(WebSocketSession session, int x, int y) {
         executeOnBehalfOfPlayer(session, player -> clickCell(player, x, y));
     }
 

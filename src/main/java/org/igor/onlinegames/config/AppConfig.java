@@ -10,6 +10,7 @@ import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -29,6 +30,11 @@ public class AppConfig implements WebMvcConfigurer {
         mapper.registerModule(new Jdk8Module());
         mapper.registerModule(new JavaTimeModule());
         return mapper;
+    }
+
+    @Bean
+    public ExecutorService executorService() {
+        return Executors.newFixedThreadPool(10);
     }
 
     @Bean
