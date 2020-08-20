@@ -56,9 +56,9 @@ public abstract class State {
     }
 
     protected synchronized void sendMessageToFe(WebSocketSession session, Object msg) {
-        setLastOutMsgAt(clock.instant());
         try {
             session.sendMessage(new TextMessage(mapper.writeValueAsString(msg)));
+            setLastOutMsgAt(clock.instant());
         } catch (IOException ex) {
             LOG.error(ex.getMessage(), ex);
         }

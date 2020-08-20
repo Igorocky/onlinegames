@@ -143,6 +143,8 @@ const XoGamePlayerView = ({openView}) => {
         return RE.Container.row.left.top({},{},
             RE.Container.col.top.left({style:{marginRight:'10px'}},{style:{marginBottom:'10px'}},
                 RE.span({style:{fontSize:'30px'}}, "Goal: " + beState.goal),
+                (beState.phase == "WAITING_FOR_PLAYERS_TO_JOIN" && beState.timerSeconds)
+                    ?RE.span({style:{fontSize:'20px'}}, "Time: " + beState.timerSeconds):null,
                 beState.players?re(XoGameTableOfPlayersComponent, beState):null,
             ),
             re(XoGamePlayfieldComponent, {

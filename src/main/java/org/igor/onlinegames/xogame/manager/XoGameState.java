@@ -29,8 +29,14 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.igor.onlinegames.common.OnlinegamesUtils.listOf;
@@ -46,6 +52,9 @@ public class XoGameState extends State implements GameState {
     private static final String PASSCODE = "passcode";
     private static final String FIELD_SIZE = "fieldSize";
     private static final String GOAL = "goal";
+    private static final String TIMER = "timer";
+    private static final Pattern TIMER_VALUE_PATTERN_1 = Pattern.compile("^(\\d+)([sm])$");
+    private static final Pattern TIMER_VALUE_PATTERN_2 = Pattern.compile("^(\\d+)m(\\d+)s$");
 
     private String title;
     private String passcode;
@@ -55,6 +64,10 @@ public class XoGameState extends State implements GameState {
     private List<XoPlayer> players;
     private int fieldSize;
     private int goal;
+    private String timerStr;
+    private Integer timerSeconds;
+    private ScheduledExecutorService scheduledExecutorService;
+    private ScheduledFuture<?> timerHandle;
     private Character[][] field;
     private List<Integer> lastCell;
     private XoPlayer playerToMove;
@@ -68,6 +81,11 @@ public class XoGameState extends State implements GameState {
         goal = args.get(GOAL).asInt();
         if (fieldSize < goal) {
             throw new OnlinegamesException("fieldSize < goal");
+        }
+
+        if (args.has(TIMER)) {
+            timerStr = StringUtils.trimToNull(args.get(TIMER).asText(null));
+            timerSeconds = parseTimerValue(timerStr);
         }
 
         if (args.has(TITLE)) {
@@ -96,6 +114,17 @@ public class XoGameState extends State implements GameState {
             } else {
                 return false;
             }
+        }
+    }
+
+    private void shutdownTimer() {
+        if (timerHandle != null) {
+            timerHandle.cancel(true);
+            timerHandle = null;
+        }
+        if (scheduledExecutorService != null) {
+            scheduledExecutorService.shutdownNow();
+            scheduledExecutorService = null;
         }
     }
 
@@ -140,6 +169,10 @@ public class XoGameState extends State implements GameState {
             }
             playerToMove = players.get(0);
             phase = XoGamePhase.IN_PROGRESS;
+            if (timerSeconds != null) {
+                scheduledExecutorService = Executors.newScheduledThreadPool(1);
+                startTimerForCurrentPlayer();
+            }
             broadcastGameState();
         }
     }
@@ -223,6 +256,7 @@ public class XoGameState extends State implements GameState {
                     .currentUserIsGameOwner(player.isGameOwner())
                     .fieldSize(fieldSize)
                     .goal(goal)
+                    .timerSeconds(getRemainingTimerDelay())
                     .field(createFieldDto(field))
                     .build();
         } else {
@@ -231,6 +265,7 @@ public class XoGameState extends State implements GameState {
                     .currentUserIsGameOwner(player.isGameOwner())
                     .fieldSize(fieldSize)
                     .goal(goal)
+                    .timerSeconds(getRemainingTimerDelay())
                     .field(createFieldDto(field))
                     .lastCell(lastCell)
                     .currentPlayerId(player.getPlayerId())
@@ -239,6 +274,15 @@ public class XoGameState extends State implements GameState {
                     .winnerId(nullSafeGetter(winner, XoPlayer::getPlayerId))
                     .winnerPath(winnerPath)
                     .build();
+        }
+    }
+
+    private Integer getRemainingTimerDelay() {
+        long timerHandleDelay = timerHandle != null ? timerHandle.getDelay(TimeUnit.SECONDS) : 0;
+        if (timerHandleDelay > 0) {
+            return Math.toIntExact(timerHandleDelay);
+        } else {
+            return timerSeconds;
         }
     }
 
@@ -261,6 +305,10 @@ public class XoGameState extends State implements GameState {
                         XoGameErrorDto.builder().errorDescription("The cell you clicked is not empty.").build()
                 );
             } else {
+                if (timerHandle != null) {
+                    timerHandle.cancel(true);
+                    timerHandle = null;
+                }
                 field[x][y] = player.getPlayerSymbol();
                 lastCell = listOf(x,y);
 
@@ -277,9 +325,15 @@ public class XoGameState extends State implements GameState {
                     playerToMove = null;
                     phase = XoGamePhase.FINISHED;
                 } else {
-                    playerToMove = getNextPlayerToMove();
+                    setNextPlayerToMove();
+                    if (timerSeconds != null) {
+                        startTimerForCurrentPlayer();
+                    }
                 }
                 broadcastGameState();
+            }
+            if (phase == XoGamePhase.FINISHED) {
+                shutdownTimer();
             }
         }
     }
@@ -391,9 +445,56 @@ public class XoGameState extends State implements GameState {
         return !Arrays.asList(field).stream().flatMap(r -> Arrays.asList(r).stream()).anyMatch(Objects::isNull);
     }
 
+    private Integer parseTimerValue(String timerStr) {
+        if (timerStr == null) {
+            return null;
+        } else {
+            final Matcher matcher1 = TIMER_VALUE_PATTERN_1.matcher(timerStr);
+            if (matcher1.matches()) {
+                if ("s".equals(matcher1.group(2))) {
+                    return Integer.parseInt(matcher1.group(1));
+                } else {
+                    return Integer.parseInt(matcher1.group(1))*60;
+                }
+            } else {
+                final Matcher matcher2 = TIMER_VALUE_PATTERN_2.matcher(timerStr);
+                if (matcher2.matches()) {
+                    return Integer.parseInt(matcher2.group(1))*60 + Integer.parseInt(matcher2.group(2));
+                } else {
+                    return null;
+                }
+            }
+        }
+    }
+
+    private synchronized void startTimerForCurrentPlayer() {
+        if (timerHandle != null) {
+            timerHandle.cancel(true);
+        }
+        timerHandle = startTimerForPlayer(playerToMove);
+    }
+
+    private synchronized ScheduledFuture<?> startTimerForPlayer(XoPlayer player) {
+        return scheduledExecutorService.schedule(
+                () -> {
+                    if (playerToMove == player) {
+                        setNextPlayerToMove();
+                        broadcastGameState();
+                        startTimerForCurrentPlayer();
+                    }
+                },
+                timerSeconds + 1,
+                TimeUnit.SECONDS
+        );
+    }
+
+    private synchronized void setNextPlayerToMove() {
+        playerToMove = getNextPlayerToMove();
+    }
+
     @Override
     protected Object getViewRepresentation() {
-        return this.getClass().getSimpleName();
+        return this.getClass().getSimpleName() + "[scheduledExecutorService=" + scheduledExecutorService + "]";
     }
 
     @Override

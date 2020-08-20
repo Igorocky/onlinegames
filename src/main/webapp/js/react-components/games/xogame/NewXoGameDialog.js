@@ -4,13 +4,14 @@ const NewXoGameDialog = ({openView, onCancel}) => {
 
     const [fieldSize, setFieldSize] = useState(8)
     const [goal, setGoal] = useState(4)
+    const [timer, setTimer] = useState('')
     const [title, setTitle] = useState(null)
     const [passcode, setPasscode] = useState(null)
 
     function createNewXoGame() {
         doRpcCall(
             "createNewBackendState",
-            {stateType: "XoGame", initParams: {fieldSize, title, passcode, goal}},
+            {stateType: "XoGame", initParams: {fieldSize, title, passcode, goal, timer}},
             gameId => {
                 openView(VIEW_URLS.xoGame({gameId}))
             }
@@ -58,6 +59,23 @@ const NewXoGameDialog = ({openView, onCancel}) => {
                                         style: {width: inputElemsWidth}
                                     },
                                     ints(3, fieldSize).map(i => RE.MenuItem({key: i, value: i}, i))
+                                )
+                            )
+                        )
+                    ),
+                    RE.tr({},
+                        RE.td({style: tdStyle},
+                            RE.FormControl({variant:'outlined'},
+                                RE.InputLabel({}, 'Timer (optional)'),
+                                RE.Select(
+                                    {
+                                        value: timer,
+                                        label:'Timer (optional)',
+                                        onChange: event => setTimer(event.target.value),
+                                        style: {width: inputElemsWidth}
+                                    },
+                                    ['none', '5s', '10s', '15s', '20s', '25s', '30s', '40s', '50s', '1m', '1m30s', '2m', '3m']
+                                        .map(dur => RE.MenuItem({key: dur, value: dur=='none'?'':dur}, dur))
                                 )
                             )
                         )

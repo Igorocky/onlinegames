@@ -1,11 +1,16 @@
 "use strict";
 
-const XoGameTableOfPlayersComponent = ({players, currentPlayerId, playerIdToMove}) => {
+const XoGameTableOfPlayersComponent = ({players, currentPlayerId, playerIdToMove, timerSeconds}) => {
     const symbolSize = "20px"
 
     return RE.table({style:{marginRight:'15px'}},
         RE.tbody({},
             players.map(player => RE.tr({key:player.playerId},
+                RE.td({style:{width: '20px'}},
+                    (timerSeconds && player.playerId==playerIdToMove)
+                    ?re(XoGameTimerComponent, {timerSeconds})
+                    :null
+                ),
                 RE.td({},
                     player.playerId==playerIdToMove
                     ?RE.img({src:`/img/xogame/player-to-move-arrow.svg`, style: {maxWidth:symbolSize, maxHeight:symbolSize}})

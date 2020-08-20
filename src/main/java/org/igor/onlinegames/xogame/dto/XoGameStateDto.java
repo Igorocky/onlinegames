@@ -17,6 +17,7 @@ public class XoGameStateDto implements XoGameDto {
     private boolean currentUserIsGameOwner;
     private int fieldSize;
     private int goal;
+    private Integer timerSeconds;
     private List<XoCellDto> field;
     private List<Integer> lastCell;
     private List<XoPlayerDto> players;
