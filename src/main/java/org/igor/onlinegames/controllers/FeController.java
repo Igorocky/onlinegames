@@ -1,6 +1,7 @@
 package org.igor.onlinegames.controllers;
 
 import org.apache.commons.io.IOUtils;
+import org.igor.onlinegames.model.OnlineGamesUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -24,9 +25,12 @@ public class FeController {
     private String configName;
     @Autowired
     ServletContext servletContext;
+    @Autowired
+    private OnlineGamesUser user;
 
     @GetMapping("/**")
     public ResponseEntity<byte[]> index() throws IOException {
+        user.getUserData();
         return new ResponseEntity<>(
                 readFileToString("/index.html")
                         .replaceAll("@app\\.version@", appVersion)
