@@ -181,7 +181,7 @@ const XoGamePlayerView = ({openView}) => {
                             RE.td({style: tdStyle}, 'This game requires passcode.')
                         ),
                         incorrectPasscode?RE.tr({},
-                            RE.td({style: tdStyle}, 'You\'ve entered incorrect passcode.')
+                            RE.td({style: {...tdStyle, color: 'red'}}, 'You\'ve entered incorrect passcode.')
                         ):null,
                         RE.tr({},
                             RE.td({style: tdStyle},
