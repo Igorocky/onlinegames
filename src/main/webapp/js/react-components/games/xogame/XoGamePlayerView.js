@@ -124,7 +124,7 @@ const XoGamePlayerView = ({openView}) => {
             return RE.Container.col.top.center({},{},
                 RE.Typography({variant:"h4"},"Game over"),
                 RE.Typography({variant:"h5"}, renderWinnerInfo()),
-                RE.Button({onClick: goToGameSelector}, "New game"),
+                RE.Button({onClick: goToGameSelector,}, RE.Icon({fontSize:"large"}, 'home'))
             )
         }
     }
