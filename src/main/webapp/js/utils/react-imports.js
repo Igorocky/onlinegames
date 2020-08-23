@@ -324,3 +324,37 @@ function link(redirectFunction, url) {
         }
     }
 }
+
+function useStateFromLocalStorage({key, validator, defaultValue}) {
+    const [value, setValue] = useState(() => {
+        let value
+        if (validator) {
+            value = validator(readFromLocalStorage(key, null))
+        } else {
+            value = readFromLocalStorage(key, null)
+        }
+        if (defaultValue !== undefined && !hasValue(value)) {
+            value = defaultValue
+        }
+        return value
+    })
+
+    function setValueInternal(newValue) {
+        if (validator) {
+            newValue = validator(newValue)
+        }
+        saveToLocalStorage(key, newValue)
+        setValue(newValue)
+    }
+
+    return [
+        value,
+        newValue => {
+            if (typeof newValue === 'function') {
+                setValueInternal(newValue(value))
+            } else {
+                setValueInternal(newValue)
+            }
+        }
+    ]
+}

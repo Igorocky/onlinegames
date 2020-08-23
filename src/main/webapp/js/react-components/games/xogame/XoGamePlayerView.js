@@ -1,5 +1,9 @@
 "use strict";
 
+const XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX = 'XoGamePlayerView.';
+const XO_GAME_PLAY_FIELD_SIZE_PER_CELL_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'playFieldSizePerCell'
+const XO_GAME_SOUNDS_ENABLED = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'soundsEnabled'
+
 const XoGamePlayerView = ({openView}) => {
     const query = useQuery()
     const gameId = query.get("gameId")
@@ -9,15 +13,29 @@ const XoGamePlayerView = ({openView}) => {
     const [incorrectPasscode, setIncorrectPasscode] = useState(false)
     const [beState, setBeState] = useState(null)
 
-    const playFieldSizePerCellKey = 'XoGamePlayerView.playFieldSizePerCell'
     const PLAY_FIELD_SIZE_PER_CELL_MIN = 20
     const PLAY_FIELD_SIZE_PER_CELL_MAX = 300
-    const [playFieldSizePerCell, setPlayFieldSizePerCell] = useState(() =>
-        validatePlayFieldSizePerCell(readFromLocalStorage(playFieldSizePerCellKey, 100))
-    )
+    const [playFieldSizePerCell, setPlayFieldSizePerCell] = useStateFromLocalStorage({
+        key: XO_GAME_PLAY_FIELD_SIZE_PER_CELL_KEY,
+        validator: validatePlayFieldSizePerCell
+    })
+    const [soundsEnabled, setSoundsEnabled] = useStateFromLocalStorage({
+        key: XO_GAME_SOUNDS_ENABLED,
+        defaultValue: true
+    })
+
+    useEffect(() => {
+        if (soundsEnabled && beState?.lastCell) {
+            playAudio(audioUrl('on-move.mp3'))
+        }
+    }, [
+        beState?.lastCell?(beState.lastCell[0]+'-'+beState.lastCell[1]):null
+    ])
 
     function validatePlayFieldSizePerCell(newValue) {
-        if (newValue < PLAY_FIELD_SIZE_PER_CELL_MIN) {
+        if (typeof newValue !== 'number') {
+            return 100
+        } else if (newValue < PLAY_FIELD_SIZE_PER_CELL_MIN) {
             return PLAY_FIELD_SIZE_PER_CELL_MIN
         } else if (newValue > PLAY_FIELD_SIZE_PER_CELL_MAX) {
             return PLAY_FIELD_SIZE_PER_CELL_MAX
@@ -110,11 +128,7 @@ const XoGamePlayerView = ({openView}) => {
     }
 
     function zoomField(factor) {
-        setPlayFieldSizePerCell(oldValue => {
-            const newValue = validatePlayFieldSizePerCell(oldValue * factor)
-            saveToLocalStorage(playFieldSizePerCellKey, newValue)
-            return newValue
-        })
+        setPlayFieldSizePerCell(oldValue => oldValue * factor)
     }
 
     function renderField() {
@@ -167,6 +181,12 @@ const XoGamePlayerView = ({openView}) => {
                         onClick: () => zoomField(1/1.1),
                     },
                     RE.Icon({}, 'zoom_out')
+                ),
+                RE.Button({
+                        style:{},
+                        onClick: () => setSoundsEnabled(!soundsEnabled),
+                    },
+                    soundsEnabled?RE.Icon({}, 'volume_up'):RE.Icon({}, 'volume_off')
                 )
             ),
         )

@@ -68,6 +68,17 @@ function disableScrollOnMouseDown(event) {
     }
 }
 
-function soundUrl(fileRelPath) {
+function audioUrl(fileRelPath) {
     return "/assets/sound/" + APP_VERSION + "/" + fileRelPath
+}
+
+const AUDIO_FILES_CACHE = {}
+
+function playAudio(audioFileUrl) {
+    let audio = AUDIO_FILES_CACHE[audioFileUrl]
+    if (!audio) {
+        audio = new Audio(audioFileUrl)
+        AUDIO_FILES_CACHE[audioFileUrl] = audio
+    }
+    audio.play()
 }
