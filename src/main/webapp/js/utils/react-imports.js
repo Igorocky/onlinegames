@@ -327,15 +327,20 @@ function link(redirectFunction, url) {
 
 function useStateFromLocalStorage({key, validator, defaultValue}) {
     const [value, setValue] = useState(() => {
-        let value
         if (validator) {
-            value = validator(readFromLocalStorage(key, null))
+            return validator(readFromLocalStorage(key, undefined))
         } else {
-            value = readFromLocalStorage(key, null)
+            const value = readFromLocalStorage(key, undefined)
+            console.log({m:'useStateFromLocalStorage',key,value})
+            if (defaultValue !== undefined && value === undefined) {
+                console.log({m:'useStateFromLocalStorage.res',defaultValue})
+                return defaultValue
+            } else {
+                console.log({m:'useStateFromLocalStorage.res',value})
+                return value
+            }
         }
-        if (defaultValue !== undefined && !hasValue(value)) {
-            value = defaultValue
-        }
+
         return value
     })
 

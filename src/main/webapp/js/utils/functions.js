@@ -7,6 +7,8 @@ const UP_KEY_CODE = 38
 const RIGHT_KEY_CODE = 39
 const DOWN_KEY_CODE = 40
 
+const XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX = 'XoGamePlayerView.'
+
 function hasValue(variable) {
     return variable !== undefined && variable !== null
 }

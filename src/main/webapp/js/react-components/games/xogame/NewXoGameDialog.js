@@ -1,12 +1,18 @@
 "use strict";
 
+const XO_GAME_FIELD_SIZE_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'fieldSize'
+const XO_GAME_GOAL_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'goal'
+const XO_GAME_TIMER_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'timer'
+const XO_GAME_TITLE_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'title'
+const XO_GAME_PASSCODE_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'passcode'
+
 const NewXoGameDialog = ({openView, onCancel}) => {
 
-    const [fieldSize, setFieldSize] = useState(8)
-    const [goal, setGoal] = useState(4)
-    const [timer, setTimer] = useState('')
-    const [title, setTitle] = useState(null)
-    const [passcode, setPasscode] = useState(null)
+    const [fieldSize, setFieldSize] = useStateFromLocalStorage({key: XO_GAME_FIELD_SIZE_KEY, defaultValue: 8})
+    const [goal, setGoal] = useStateFromLocalStorage({key: XO_GAME_GOAL_KEY, defaultValue: 4})
+    const [timer, setTimer] = useStateFromLocalStorage({key: XO_GAME_TIMER_KEY, defaultValue: ''})
+    const [title, setTitle] = useStateFromLocalStorage({key: XO_GAME_TITLE_KEY, defaultValue: null})
+    const [passcode, setPasscode] = useStateFromLocalStorage({key: XO_GAME_PASSCODE_KEY, defaultValue: null})
 
     function createNewXoGame() {
         doRpcCall(
@@ -87,6 +93,7 @@ const NewXoGameDialog = ({openView, onCancel}) => {
                                     variant: 'outlined', label: 'Title (optional)',
                                     style: {width: inputElemsWidth},
                                     onChange: event => setTitle(event.target.value),
+                                    value: title
                                 },
                                 title
                             )
@@ -99,6 +106,7 @@ const NewXoGameDialog = ({openView, onCancel}) => {
                                     variant: 'outlined', label: 'Passcode (optional)',
                                     style: {width: inputElemsWidth},
                                     onChange: event => setPasscode(event.target.value),
+                                    value: passcode
                                 },
                                 passcode
                             )
