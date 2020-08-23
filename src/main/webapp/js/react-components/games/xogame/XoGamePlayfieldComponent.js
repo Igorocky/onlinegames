@@ -210,28 +210,30 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
     function renderLineOfFrame({ex, margin, symbol, cellSize, amount}) {
         let ex2 = ex.translate(ex.rotate(90), margin/2)
         ex2 = ex2.translate(ex2.rotate(180), margin/2).scale(margin/cellSize)
+        const shift = ex.rotate(90).scale(cellSize)
 
         const result = []
         while (amount > 0) {
             result.push(
                 ...renderSymbol({centerEx: ex2, symbol, cellSize})
             )
-            ex2 = ex2.translate(ex.rotate(90), margin)
+            ex2 = ex2.translate(shift)
             amount = amount - 1
         }
 
         return result
     }
 
-    function renderFrame({ex, boundaries, margin, symbol, cellSize}) {
-        const amount = Math.ceil((boundaries.maxX-boundaries.minX)/ex.scale(margin).length())
-        ex = ex.translateTo(new Point(boundaries.minX, boundaries.maxY))
+    function renderFrame({ex, boundaries, margin, symbol, cellSize, fieldSize}) {
+        const amount = fieldSize
         return [
-            ex,
-                ex.rotate(90).translateTo(new Point(boundaries.maxX, boundaries.maxY)),
-                ex.rotate(180).translateTo(new Point(boundaries.maxX, boundaries.minY)),
-                ex.rotate(270).translateTo(new Point(boundaries.minX, boundaries.minY))
-            ].flatMap(ex => renderLineOfFrame({ex, margin, symbol, cellSize, amount}))
+            ex.translateTo(new Point(boundaries.minX, boundaries.maxY)),
+            ex.rotate(90).translateTo(new Point(boundaries.maxX, boundaries.maxY)),
+            ex.rotate(180).translateTo(new Point(boundaries.maxX, boundaries.minY)),
+            ex.rotate(270).translateTo(new Point(boundaries.minX, boundaries.minY))
+        ]
+            .map(ex => ex.translate(ex.rotate(90), margin))
+            .flatMap(ex => renderLineOfFrame({ex, margin, symbol, cellSize, amount}))
     }
 
     function renderSvgField() {
@@ -254,7 +256,7 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
             background,
             ...grid.svgElems,
             ...renderCells({ex, cellSize, tableData}),
-            frameSymbol?renderFrame({ex, boundaries: grid.boundaries, margin, symbol:frameSymbol, cellSize}):null
+            frameSymbol?renderFrame({ex, boundaries: grid.boundaries, margin, symbol:frameSymbol, cellSize, fieldSize}):null
         )
     }
 
