@@ -55,6 +55,7 @@ public class XoGameState extends State implements GameState {
     private static final String TIMER = "timer";
     private static final Pattern TIMER_VALUE_PATTERN_1 = Pattern.compile("^(\\d+)([sm])$");
     private static final Pattern TIMER_VALUE_PATTERN_2 = Pattern.compile("^(\\d+)m(\\d+)s$");
+    private static final String PLAYER_NAME = "PLAYER_NAME";
 
     private String title;
     private String passcode;
@@ -75,7 +76,6 @@ public class XoGameState extends State implements GameState {
     private List<List<Integer>> winnerPath;
 
     // TODO: 22.08.2020 add names
-    // TODO: 22.08.2020 add sounds
     // TODO: 22.08.2020 add automatic draw detection
     // TODO: 22.08.2020 rename buttons 'new xo game' / 'start game' / 'new game'
     // TODO: 23.08.2020 filled shapes
@@ -89,17 +89,10 @@ public class XoGameState extends State implements GameState {
             throw new OnlinegamesException("fieldSize < goal");
         }
 
-        if (args.has(TIMER)) {
-            timerStr = StringUtils.trimToNull(args.get(TIMER).asText(null));
-            timerSeconds = parseTimerValue(timerStr);
-        }
-
-        if (args.has(TITLE)) {
-            title = StringUtils.trimToNull(args.get(TITLE).asText(null));
-        }
-        if (args.has(PASSCODE)) {
-            passcode = StringUtils.trimToNull(args.get(PASSCODE).asText(null));
-        }
+        timerStr = getNonEmptyTextFromParams(args, TIMER).orElse(null);
+        timerSeconds = parseTimerValue(timerStr);
+        title = getNonEmptyTextFromParams(args, TITLE).orElse(null);
+        passcode = getNonEmptyTextFromParams(args, PASSCODE).orElse(null);
     }
 
     @Override
@@ -120,17 +113,6 @@ public class XoGameState extends State implements GameState {
             } else {
                 return false;
             }
-        }
-    }
-
-    private void shutdownTimer() {
-        if (timerHandle != null) {
-            timerHandle.cancel(true);
-            timerHandle = null;
-        }
-        if (scheduledExecutorService != null) {
-            scheduledExecutorService.shutdownNow();
-            scheduledExecutorService = null;
         }
     }
 
@@ -207,6 +189,33 @@ public class XoGameState extends State implements GameState {
         }
     }
 
+    private Optional<JsonNode> getFromParams(JsonNode params, String attrName) {
+        if (params != null) {
+            return Optional.ofNullable(params.get(PASSCODE));
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<String> getNonEmptyTextFromParams(JsonNode params, String attrName) {
+        return getFromParams(params, attrName)
+                .map(JsonNode::asText)
+                .map(StringUtils::trimToNull);
+    }
+
+    private Set<String> getConnectedPlayerNames() {
+        return sessions.stream()
+                .map(this::extractPlayerNameFromSession)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
+    private boolean checkPlayerName(WebSocketSession session) {
+        final String playerName = extractPlayerNameFromSession(session);
+        final Set<String> connectedPlayerNames = getConnectedPlayerNames();
+        return playerName == null || !connectedPlayerNames.contains(playerName);
+    }
+
     private XoPlayer sessionToMinimalPlayer(WebSocketSession session) {
         return XoPlayer.builder()
                 .gameOwner(extractUserIdFromSession(session).equals(gameOwnerUserId))
@@ -253,6 +262,18 @@ public class XoGameState extends State implements GameState {
 
     private UUID extractUserIdFromSession(WebSocketSession session) {
         return OnlinegamesUtils.extractUserSessionData(session).get().getUserId();
+    }
+
+    private String extractPlayerNameFromSession(WebSocketSession session) {
+        return StringUtils.trimToNull((String) session.getAttributes().get(PLAYER_NAME));
+    }
+
+    private void savePlayerNameToSession(WebSocketSession session, String playerName) {
+        session.getAttributes().put(PLAYER_NAME, StringUtils.trimToNull(playerName));
+    }
+
+    private void savePlayerNameToSession(WebSocketSession session, JsonNode bindParams) {
+        savePlayerNameToSession(session, getNonEmptyTextFromParams(bindParams, "playerName").orElse(null));
     }
 
     private XoGameStateDto createViewOfCurrentState(XoPlayer player) {
@@ -499,6 +520,17 @@ public class XoGameState extends State implements GameState {
 
     private synchronized void setNextPlayerToMove() {
         playerToMove = getNextPlayerToMove();
+    }
+
+    private void shutdownTimer() {
+        if (timerHandle != null) {
+            timerHandle.cancel(true);
+            timerHandle = null;
+        }
+        if (scheduledExecutorService != null) {
+            scheduledExecutorService.shutdownNow();
+            scheduledExecutorService = null;
+        }
     }
 
     @Override
