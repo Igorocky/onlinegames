@@ -1,6 +1,6 @@
 "use strict";
 
-const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked}) => {
+const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, frameSymbol}) => {
 
     /**
      * @typedef {Object} SvgElements
@@ -207,6 +207,33 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked}) =
         }
     }
 
+    function renderLineOfFrame({ex, margin, symbol, cellSize, amount}) {
+        let ex2 = ex.translate(ex.rotate(90), margin/2)
+        ex2 = ex2.translate(ex2.rotate(180), margin/2).scale(margin/cellSize)
+
+        const result = []
+        while (amount > 0) {
+            result.push(
+                ...renderSymbol({centerEx: ex2, symbol, cellSize})
+            )
+            ex2 = ex2.translate(ex.rotate(90), margin)
+            amount = amount - 1
+        }
+
+        return result
+    }
+
+    function renderFrame({ex, boundaries, margin, symbol, cellSize}) {
+        const amount = Math.ceil((boundaries.maxX-boundaries.minX)/ex.scale(margin).length())
+        ex = ex.translateTo(new Point(boundaries.minX, boundaries.maxY))
+        return [
+            ex,
+                ex.rotate(90).translateTo(new Point(boundaries.maxX, boundaries.maxY)),
+                ex.rotate(180).translateTo(new Point(boundaries.maxX, boundaries.minY)),
+                ex.rotate(270).translateTo(new Point(boundaries.minX, boundaries.minY))
+            ].flatMap(ex => renderLineOfFrame({ex, margin, symbol, cellSize, amount}))
+    }
+
     function renderSvgField() {
         const background = SVG.rect({key:'background', x:-1000, y:-1000, width:2000, height:2000, fill:"lightgrey"})
 
@@ -221,10 +248,13 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked}) =
             props: {stroke:'white', strokeWidth: 0.2}
         })
 
-        return RE.svg({width: size, height: size, boundaries: grid.boundaries.addAbsoluteMargin(3)},
+        const margin = cellSize*0.3
+
+        return RE.svg({width: size, height: size, boundaries: grid.boundaries.addAbsoluteMargin(margin)},
             background,
             ...grid.svgElems,
-            ...renderCells({ex, cellSize, tableData})
+            ...renderCells({ex, cellSize, tableData}),
+            frameSymbol?renderFrame({ex, boundaries: grid.boundaries, margin, symbol:frameSymbol, cellSize}):null
         )
     }
 

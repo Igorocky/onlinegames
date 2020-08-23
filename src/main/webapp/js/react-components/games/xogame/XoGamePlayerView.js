@@ -211,7 +211,8 @@ const XoGamePlayerView = ({openView}) => {
                 size: playFieldSizePerCell*beState.fieldSize,
                 fieldSize: beState.fieldSize,
                 tableData,
-                onCellClicked: cellClicked
+                onCellClicked: cellClicked,
+                frameSymbol: (hasValue(beState.currentPlayerId) && beState.currentPlayerId==beState.playerIdToMove)?getCurrentPlayer().symbol:null
             }),
             RE.ButtonGroup({variant:"contained", size:"small", orientation:"vertical"},
                 RE.Button({

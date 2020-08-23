@@ -76,11 +76,9 @@ public class XoGameState extends State implements GameState {
     private XoPlayer winner;
     private List<List<Integer>> winnerPath;
 
-    // TODO: 22.08.2020 add names
     // TODO: 22.08.2020 add automatic draw detection
     // TODO: 22.08.2020 rename buttons 'new xo game' / 'start game' / 'new game'
     // TODO: 23.08.2020 filled shapes
-    // TODO: 23.08.2020 a better indicator of 'your move'
 
     @Override
     protected void init(JsonNode args) {
