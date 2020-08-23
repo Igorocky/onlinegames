@@ -5,8 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@AllArgsConstructor
 @Data
-public class XoGameErrorDto implements XoGameDto {
-    private String errorDescription;
+@AllArgsConstructor
+public class XoGamePlayerNameWasSetMsgDto implements XoGameDto {
+    private String newPlayerName;
 }

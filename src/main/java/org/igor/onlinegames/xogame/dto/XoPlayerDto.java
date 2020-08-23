@@ -9,6 +9,7 @@ import lombok.Data;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class XoPlayerDto {
     private int playerId;
+    private String name;
     private Boolean gameOwner;
     private Character symbol;
 }

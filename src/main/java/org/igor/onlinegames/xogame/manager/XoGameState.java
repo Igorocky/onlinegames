@@ -5,7 +5,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.igor.onlinegames.common.OnlinegamesUtils;
 import org.igor.onlinegames.exceptions.OnlinegamesException;
 import org.igor.onlinegames.model.GameState;
-import org.igor.onlinegames.model.UserSessionData;
 import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
 import org.igor.onlinegames.xogame.dto.XoCellDto;
@@ -14,6 +13,8 @@ import org.igor.onlinegames.xogame.dto.XoGameIncorrectPasscodeErrorDto;
 import org.igor.onlinegames.xogame.dto.XoGameNoAvailablePlacesErrorDto;
 import org.igor.onlinegames.xogame.dto.XoGamePasscodeIsRequiredErrorDto;
 import org.igor.onlinegames.xogame.dto.XoGamePhase;
+import org.igor.onlinegames.xogame.dto.XoGamePlayerNameIsOccupiedErrorDto;
+import org.igor.onlinegames.xogame.dto.XoGamePlayerNameWasSetMsgDto;
 import org.igor.onlinegames.xogame.dto.XoGameStateDto;
 import org.igor.onlinegames.xogame.dto.XoPlayerDto;
 import org.springframework.context.annotation.Scope;
@@ -79,6 +80,7 @@ public class XoGameState extends State implements GameState {
     // TODO: 22.08.2020 add automatic draw detection
     // TODO: 22.08.2020 rename buttons 'new xo game' / 'start game' / 'new game'
     // TODO: 23.08.2020 filled shapes
+    // TODO: 23.08.2020 a better indicator of 'your move'
 
     @Override
     protected void init(JsonNode args) {
@@ -89,30 +91,40 @@ public class XoGameState extends State implements GameState {
             throw new OnlinegamesException("fieldSize < goal");
         }
 
-        timerStr = getNonEmptyTextFromParams(args, TIMER).orElse(null);
+        timerStr = getNonEmptyTextFromParams(args, TIMER);
         timerSeconds = parseTimerValue(timerStr);
-        title = getNonEmptyTextFromParams(args, TITLE).orElse(null);
-        passcode = getNonEmptyTextFromParams(args, PASSCODE).orElse(null);
+        title = getNonEmptyTextFromParams(args, TITLE);
+        passcode = getNonEmptyTextFromParams(args, PASSCODE);
     }
 
     @Override
     public synchronized boolean bind(WebSocketSession session, JsonNode bindParams) {
-        if (gameOwnerUserId == null) {
-            gameOwnerUserId = extractUserIdFromSession(session);
-        }
-        if (getNumberOfWaitingPlayers() >= MAX_NUMBER_OF_PLAYERS) {
-            sendMessageToFe(session, new XoGameNoAvailablePlacesErrorDto());
-            return false;
-        } else if (!checkPasscode(session, bindParams)) {
-            return false;
-        } else {
-            if (super.bind(session, bindParams)) {
-                userIdsEverConnected.add(extractUserIdFromSession(session));
-                broadcastGameState();
-                return true;
-            } else {
-                return false;
+        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
+            if (gameOwnerUserId == null) {
+                gameOwnerUserId = extractUserIdFromSession(session);
             }
+            if (getNumberOfWaitingPlayers() >= MAX_NUMBER_OF_PLAYERS) {
+                sendMessageToFe(session, new XoGameNoAvailablePlacesErrorDto());
+                return false;
+            } else if (!checkPasscode(session, bindParams)) {
+                return false;
+            } else {
+                String playerName = getNonEmptyTextFromParams(bindParams, "playerName");
+                if (!checkPlayerName(session, playerName)) {
+                    return false;
+                } else {
+                    savePlayerNameToSession(session, playerName);
+                }
+                if (super.bind(session, bindParams)) {
+                    userIdsEverConnected.add(extractUserIdFromSession(session));
+                    broadcastGameState();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        } else {
+            return false;
         }
     }
 
@@ -123,36 +135,42 @@ public class XoGameState extends State implements GameState {
     }
 
     @RpcMethod
+    public synchronized void setPlayerName(WebSocketSession session, String playerName) {
+        if (checkPlayerName(session, playerName)) {
+            savePlayerNameToSession(session, playerName);
+            sendMessageToFe(session, new XoGamePlayerNameWasSetMsgDto(playerName));
+            broadcastGameState();
+        }
+    }
+
+    @RpcMethod
     public synchronized void startGame(WebSocketSession session) {
         if (phase != XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
             return;
         }
         final UUID userId = extractUserIdFromSession(session);
         if (!userId.equals(gameOwnerUserId)) {
-            sendMessageToFe(
-                    session,
-                    XoGameErrorDto.builder().errorDescription("You don't have permissions to start game.").build()
-            );
+            sendMessageToFe(session, new XoGameErrorDto("You don't have permissions to start game."));
         } else {
             players = new ArrayList<>();
             final List<UUID> userIds = new ArrayList<>(
                     sessions.stream()
-                            .map(OnlinegamesUtils::extractUserSessionData)
-                            .map(Optional::get)
-                            .map(UserSessionData::getUserId)
-                            .filter(id -> !userId.equals(id))
+                            .map(this::extractUserIdFromSession)
+                            .filter(id -> !gameOwnerUserId.equals(id))
                             .distinct()
                             .limit(MAX_NUMBER_OF_PLAYERS-1)
                             .collect(Collectors.toList())
             );
-            userIds.add(userId);
+            userIds.add(gameOwnerUserId);
             List<Character> possibleSymbols = new ArrayList<>(POSSIBLE_SYMBOLS);
             final Random rnd = new Random();
             while (!userIds.isEmpty()) {
+                final UUID randomUserId = userIds.remove(rnd.nextInt(userIds.size()));
                 players.add(createPlayer(
-                        userIds.remove(rnd.nextInt(userIds.size())),
+                        randomUserId,
                         players.size(),
-                        possibleSymbols.remove(0)
+                        possibleSymbols.remove(0),
+                        getPlayerNameFromSession(randomUserId)
                 ));
             }
             playerToMove = players.get(0);
@@ -191,43 +209,59 @@ public class XoGameState extends State implements GameState {
 
     private Optional<JsonNode> getFromParams(JsonNode params, String attrName) {
         if (params != null) {
-            return Optional.ofNullable(params.get(PASSCODE));
+            return Optional.ofNullable(params.get(attrName));
         } else {
             return Optional.empty();
         }
     }
 
-    private Optional<String> getNonEmptyTextFromParams(JsonNode params, String attrName) {
+    private String getNonEmptyTextFromParams(JsonNode params, String attrName) {
         return getFromParams(params, attrName)
                 .map(JsonNode::asText)
-                .map(StringUtils::trimToNull);
+                .map(StringUtils::trimToNull)
+                .orElse(null);
     }
 
-    private Set<String> getConnectedPlayerNames() {
-        return sessions.stream()
-                .map(this::extractPlayerNameFromSession)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+    private List<String> getConnectedPlayerNames(WebSocketSession exceptSession) {
+        final ArrayList<String> result = new ArrayList<>();
+        for (WebSocketSession session : sessions) {
+            if (session != exceptSession) {
+                final String playerName = extractPlayerNameFromSession(session);
+                if (playerName != null && !result.contains(playerName)) {
+                    result.add(playerName);
+                }
+            }
+        }
+        return result;
     }
 
-    private boolean checkPlayerName(WebSocketSession session) {
-        final String playerName = extractPlayerNameFromSession(session);
-        final Set<String> connectedPlayerNames = getConnectedPlayerNames();
-        return playerName == null || !connectedPlayerNames.contains(playerName);
+    private boolean checkPlayerName(WebSocketSession session, String playerName) {
+        if (playerName == null) {
+            return true;
+        } else {
+            if (getConnectedPlayerNames(session).contains(playerName)) {
+                sendMessageToFe(session, new XoGamePlayerNameIsOccupiedErrorDto(playerName));
+                return false;
+            } else {
+                return true;
+            }
+        }
     }
 
     private XoPlayer sessionToMinimalPlayer(WebSocketSession session) {
         return XoPlayer.builder()
                 .gameOwner(extractUserIdFromSession(session).equals(gameOwnerUserId))
+                .name(extractPlayerNameFromSession(session))
                 .build();
     }
 
-    private XoPlayer createPlayer(UUID userId, int playerId, Character playerSymbol) {
+    private XoPlayer createPlayer(UUID userId, int playerId, Character playerSymbol, String playerName) {
         return XoPlayer.builder()
                 .userId(userId)
                 .gameOwner(userId.equals(gameOwnerUserId))
                 .playerId(playerId)
                 .playerSymbol(playerSymbol)
+                .name(playerName)
                 .feMessageSender(msg -> sendMessageToFe(userId, msg))
                 .build();
     }
@@ -269,11 +303,12 @@ public class XoGameState extends State implements GameState {
     }
 
     private void savePlayerNameToSession(WebSocketSession session, String playerName) {
-        session.getAttributes().put(PLAYER_NAME, StringUtils.trimToNull(playerName));
-    }
-
-    private void savePlayerNameToSession(WebSocketSession session, JsonNode bindParams) {
-        savePlayerNameToSession(session, getNonEmptyTextFromParams(bindParams, "playerName").orElse(null));
+        playerName = StringUtils.trimToNull(playerName);
+        if (playerName != null) {
+            session.getAttributes().put(PLAYER_NAME, playerName);
+        } else {
+            session.getAttributes().remove(PLAYER_NAME);
+        }
     }
 
     private XoGameStateDto createViewOfCurrentState(XoPlayer player) {
@@ -283,6 +318,7 @@ public class XoGameState extends State implements GameState {
                     .passcode(player.ifGameOwner(() -> passcode))
                     .phase(phase)
                     .numberOfWaitingPlayers(getNumberOfWaitingPlayers())
+                    .namesOfWaitingPlayers(getConnectedPlayerNames(null))
                     .currentUserIsGameOwner(player.isGameOwner())
                     .fieldSize(fieldSize)
                     .goal(goal)
@@ -326,14 +362,11 @@ public class XoGameState extends State implements GameState {
     private void clickCell(XoPlayer player, int x, int y) {
         if (phase == XoGamePhase.IN_PROGRESS) {
             if (!(0 <= x && x < field.length && 0 <= y && y < field[0].length)) {
-                player.sendMessageToFe(XoGameErrorDto.builder()
-                        .errorDescription("Incorrect coordinates: x = " + x + ", y = " + y + ".").build());
+                player.sendMessageToFe(new XoGameErrorDto("Incorrect coordinates: x = " + x + ", y = " + y + "."));
             } else if (playerToMove != player) {
-                player.sendMessageToFe(XoGameErrorDto.builder().errorDescription("It's not your turn.").build());
+                player.sendMessageToFe(new XoGameErrorDto("It's not your turn."));
             } else if (field[x][y] != null) {
-                player.sendMessageToFe(
-                        XoGameErrorDto.builder().errorDescription("The cell you clicked is not empty.").build()
-                );
+                player.sendMessageToFe(new XoGameErrorDto("The cell you clicked is not empty."));
             } else {
                 if (timerHandle != null) {
                     timerHandle.cancel(true);
@@ -388,6 +421,7 @@ public class XoGameState extends State implements GameState {
                     .map(xoPlayer -> XoPlayerDto.builder()
                             .gameOwner(viewer.ifGameOwner(() -> xoPlayer.isGameOwner()))
                             .playerId(xoPlayer.getPlayerId())
+                            .name(xoPlayer.getName())
                             .symbol(xoPlayer.getPlayerSymbol())
                             .build()
                     )
@@ -531,6 +565,14 @@ public class XoGameState extends State implements GameState {
             scheduledExecutorService.shutdownNow();
             scheduledExecutorService = null;
         }
+    }
+
+    private String getPlayerNameFromSession(UUID userId) {
+        return sessions.stream()
+                .filter(session -> userId.equals(extractUserIdFromSession(session)))
+                .map(this::extractPlayerNameFromSession)
+                .findAny()
+                .orElse(null);
     }
 
     @Override

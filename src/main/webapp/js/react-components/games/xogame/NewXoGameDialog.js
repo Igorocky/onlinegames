@@ -2,22 +2,44 @@
 
 const XO_GAME_FIELD_SIZE_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'fieldSize'
 const XO_GAME_GOAL_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'goal'
+const XO_GAME_PLAYER_NAME_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'playerName'
 const XO_GAME_TIMER_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'timer'
 const XO_GAME_TITLE_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'title'
 const XO_GAME_PASSCODE_KEY = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'passcode'
 
 const NewXoGameDialog = ({openView, onCancel}) => {
 
-    const [fieldSize, setFieldSize] = useStateFromLocalStorage({key: XO_GAME_FIELD_SIZE_KEY, defaultValue: 8})
-    const [goal, setGoal] = useStateFromLocalStorage({key: XO_GAME_GOAL_KEY, defaultValue: 4})
-    const [timer, setTimer] = useStateFromLocalStorage({key: XO_GAME_TIMER_KEY, defaultValue: ''})
-    const [title, setTitle] = useStateFromLocalStorage({key: XO_GAME_TITLE_KEY, defaultValue: null})
-    const [passcode, setPasscode] = useStateFromLocalStorage({key: XO_GAME_PASSCODE_KEY, defaultValue: null})
+    const [fieldSize, setFieldSize] = useStateFromLocalStorageNumber({
+        key: XO_GAME_FIELD_SIZE_KEY,
+        min: 3,
+        max: 16,
+        defaultValue: 8
+    })
+    const [goal, setGoal] = useStateFromLocalStorageNumber({
+        key: XO_GAME_GOAL_KEY,
+        defaultValue: () => 4 <= fieldSize ? 4 : fieldSize
+    })
+    const [playerName, setPlayerName] = useStateFromLocalStorageString({
+        key: XO_GAME_PLAYER_NAME_KEY,
+        defaultValue: ''
+    })
+    const [timer, setTimer] = useStateFromLocalStorageString({
+        key: XO_GAME_TIMER_KEY,
+        defaultValue: ''
+    })
+    const [title, setTitle] = useStateFromLocalStorageString({
+        key: XO_GAME_TITLE_KEY,
+        defaultValue: ''
+    })
+    const [passcode, setPasscode] = useStateFromLocalStorageString({
+        key: XO_GAME_PASSCODE_KEY,
+        defaultValue: ''
+    })
 
     function createNewXoGame() {
         doRpcCall(
             "createNewBackendState",
-            {stateType: "XoGame", initParams: {fieldSize, title, passcode, goal, timer}},
+            {stateType: "XoGame", initParams: {fieldSize, title, playerName, passcode, goal, timer}},
             gameId => {
                 openView(VIEW_URLS.xoGame({gameId}))
             }
@@ -71,6 +93,18 @@ const NewXoGameDialog = ({openView, onCancel}) => {
                     ),
                     RE.tr({},
                         RE.td({style: tdStyle},
+                            RE.TextField(
+                                {
+                                    variant: 'outlined', label: 'Your name (optional)',
+                                    style: {width: inputElemsWidth},
+                                    onChange: event => setPlayerName(event.target.value),
+                                    value: playerName
+                                }
+                            )
+                        )
+                    ),
+                    RE.tr({},
+                        RE.td({style: tdStyle},
                             RE.FormControl({variant:'outlined'},
                                 RE.InputLabel({}, 'Timer (optional)'),
                                 RE.Select(
@@ -93,9 +127,8 @@ const NewXoGameDialog = ({openView, onCancel}) => {
                                     variant: 'outlined', label: 'Title (optional)',
                                     style: {width: inputElemsWidth},
                                     onChange: event => setTitle(event.target.value),
-                                    value: title?title:''
-                                },
-                                title
+                                    value: title
+                                }
                             )
                         )
                     ),
@@ -106,9 +139,8 @@ const NewXoGameDialog = ({openView, onCancel}) => {
                                     variant: 'outlined', label: 'Passcode (optional)',
                                     style: {width: inputElemsWidth},
                                     onChange: event => setPasscode(event.target.value),
-                                    value: passcode?passcode:''
-                                },
-                                passcode
+                                    value: passcode
+                                }
                             )
                         )
                     )

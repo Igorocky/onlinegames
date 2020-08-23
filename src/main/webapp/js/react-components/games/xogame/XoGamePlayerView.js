@@ -6,53 +6,69 @@ const XO_GAME_SOUNDS_ENABLED = XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'sou
 const XoGamePlayerView = ({openView}) => {
     const query = useQuery()
     const gameId = query.get("gameId")
+    const [playerName, setPlayerName] = useStateFromLocalStorageString({
+        key: XO_GAME_PLAYER_NAME_KEY,
+        defaultValue: ''
+    })
+    const [newPlayerName, setNewPlayerName] = useState(playerName)
+    const [conflictingPlayerName, setConflictingPlayerName] = useState(null)
+    const [playerNameDialogOpened, setPlayerNameDialogOpened] = useState(false)
 
-    const backend = useBackend({stateId:gameId, onMessageFromBackend})
-    const [passcode, setPasscode] = useState(null)
+    const backend = useBackend({stateId:gameId, bindParams:{playerName}, onMessageFromBackend})
+    const [passcode, setPasscode] = useStateFromLocalStorageString({
+        key: XO_GAME_PASSCODE_KEY,
+        nullable: true,
+        defaultValue: null
+    })
     const [incorrectPasscode, setIncorrectPasscode] = useState(false)
     const [beState, setBeState] = useState(null)
+    const prevBeState = usePrevious(beState)
 
     const PLAY_FIELD_SIZE_PER_CELL_MIN = 20
     const PLAY_FIELD_SIZE_PER_CELL_MAX = 300
-    const [playFieldSizePerCell, setPlayFieldSizePerCell] = useStateFromLocalStorage({
+    const [playFieldSizePerCell, setPlayFieldSizePerCell] = useStateFromLocalStorageNumber({
         key: XO_GAME_PLAY_FIELD_SIZE_PER_CELL_KEY,
-        validator: validatePlayFieldSizePerCell
+        min: PLAY_FIELD_SIZE_PER_CELL_MIN,
+        max: PLAY_FIELD_SIZE_PER_CELL_MAX,
+        defaultValue: 100
     })
-    const [soundsEnabled, setSoundsEnabled] = useStateFromLocalStorage({
+    const [soundsEnabled, setSoundsEnabled] = useStateFromLocalStorageBoolean({
         key: XO_GAME_SOUNDS_ENABLED,
         defaultValue: true
     })
 
     useEffect(() => {
+        if (!hasValue(prevBeState) && hasValue(beState)) {
+            setConflictingPlayerName(null)
+            setPlayerNameDialogOpened(false)
+            setPlayerName(newPlayerName)
+        }
+    }, [beState])
+
+    useEffect(() => {
         if (soundsEnabled && beState?.lastCell) {
             playAudio(audioUrl('on-move.mp3'))
         }
-    }, [
-        beState?.lastCell?(beState.lastCell[0]+'-'+beState.lastCell[1]):null
-    ])
-
-    function validatePlayFieldSizePerCell(newValue) {
-        if (typeof newValue !== 'number') {
-            return 100
-        } else if (newValue < PLAY_FIELD_SIZE_PER_CELL_MIN) {
-            return PLAY_FIELD_SIZE_PER_CELL_MIN
-        } else if (newValue > PLAY_FIELD_SIZE_PER_CELL_MAX) {
-            return PLAY_FIELD_SIZE_PER_CELL_MAX
-        } else {
-            return newValue
-        }
-    }
+    }, [beState])
 
     function onMessageFromBackend(msg) {
         if (msg.type && msg.type == "state") {
             setPasscode(null)
             setBeState(msg)
+        } else if (msg.type && msg.type == "msg:PlayerNameWasSet") {
+            setPlayerName(msg.newPlayerName)
+            setConflictingPlayerName(null)
+            setPlayerNameDialogOpened(false)
         } else if (msg.type && msg.type == "error:NoAvailablePlaces") {
             openView(VIEW_URLS.gameSelector)
         } else if (msg.type && msg.type == "error:PasscodeRequired") {
             setPasscode("")
         } else if (msg.type && msg.type == "error:IncorrectPasscode") {
             setIncorrectPasscode(true)
+        } else if (msg.type && msg.type == "error:PlayerNameIsOccupied") {
+            setNewPlayerName(msg.conflictingPlayerName)
+            setConflictingPlayerName(msg.conflictingPlayerName)
+            setPlayerNameDialogOpened(true)
         }
     }
 
@@ -114,9 +130,12 @@ const XoGamePlayerView = ({openView}) => {
             return RE.Container.col.top.center({},{style:{marginBottom:"20px"}},
                 renderGameStatus(),
                 renderField(),
+                playerNameDialogOpened?renderPlayerNameDialog():null
             )
         } else if (hasValue(passcode)) {
             return renderPasscodeDialog()
+        } else if (hasValue(conflictingPlayerName)) {
+            return renderPlayerNameDialog()
         } else {
             return RE.CircularProgress()
         }
@@ -186,13 +205,30 @@ const XoGamePlayerView = ({openView}) => {
                         onClick: () => setSoundsEnabled(!soundsEnabled),
                     },
                     soundsEnabled?RE.Icon({}, 'volume_up'):RE.Icon({}, 'volume_off')
+                ),
+                RE.Button({
+                        style:{},
+                        onClick: () => {
+                            setNewPlayerName(playerName)
+                            setPlayerNameDialogOpened(true)
+                        },
+                    },
+                    RE.Icon({}, 'account_box')
                 )
             ),
         )
     }
 
     function sendPasscode() {
-        backend.send(BIND_TO_BE_STATE_METHOD_NAME, {stateId: gameId, bindParams:{passcode}})
+        backend.send(BIND_TO_BE_STATE_METHOD_NAME, {stateId: gameId, bindParams:{passcode, playerName}})
+    }
+
+    function sendPlayerName() {
+        if (!beState) {
+            backend.send(BIND_TO_BE_STATE_METHOD_NAME, {stateId: gameId, bindParams:{passcode, playerName: newPlayerName}})
+        } else {
+            backend.send("setPlayerName", {playerName: newPlayerName})
+        }
     }
 
     function renderPasscodeDialog() {
@@ -217,8 +253,8 @@ const XoGamePlayerView = ({openView}) => {
                                         onKeyDown: event => event.nativeEvent.keyCode == 13 ? sendPasscode() : null,
                                         style: {width: inputElemsWidth},
                                         onChange: event => setPasscode(event.target.value),
-                                    },
-                                    passcode
+                                        value: passcode
+                                    }
                                 )
                             )
                         )
@@ -228,6 +264,43 @@ const XoGamePlayerView = ({openView}) => {
             RE.DialogActions({},
                 RE.Button({color:'primary', onClick: goToGameSelector }, 'Cancel'),
                 RE.Button({variant:"contained", color:'primary', onClick: sendPasscode}, 'Send'),
+            ),
+        )
+    }
+
+    function renderPlayerNameDialog() {
+        const tdStyle = {padding:'10px'}
+        const inputElemsWidth = '200px';
+        return RE.Dialog({open: true},
+            RE.DialogTitle({}, 'Enter your name'),
+            RE.DialogContent({dividers:true},
+                RE.table({},
+                    RE.tbody({},
+                        RE.tr({},
+                            RE.td({style: tdStyle}, 'Enter your name.')
+                        ),
+                        hasValue(conflictingPlayerName)?RE.tr({},
+                            RE.td({style: {...tdStyle, color: 'red'}}, `Name '${conflictingPlayerName}' is used by another player in this game. Please choose another name.`)
+                        ):null,
+                        RE.tr({},
+                            RE.td({style: tdStyle},
+                                RE.TextField(
+                                    {
+                                        variant: 'outlined', label: 'Your name (Optional)', autoFocus:true,
+                                        onKeyDown: event => event.nativeEvent.keyCode == 13 ? sendPlayerName() : null,
+                                        style: {width: inputElemsWidth},
+                                        onChange: event => setNewPlayerName(event.target.value),
+                                        value: newPlayerName
+                                    }
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            RE.DialogActions({},
+                RE.Button({color:'primary', onClick: () => setPlayerNameDialogOpened(false) }, 'Cancel'),
+                RE.Button({variant:"contained", color:'primary', onClick: sendPlayerName}, 'Save'),
             ),
         )
     }

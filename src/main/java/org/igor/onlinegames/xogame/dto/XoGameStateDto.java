@@ -14,6 +14,7 @@ public class XoGameStateDto implements XoGameDto {
     private String passcode;
     private XoGamePhase phase;
     private Long numberOfWaitingPlayers;
+    private List<String> namesOfWaitingPlayers;
     private boolean currentUserIsGameOwner;
     private int fieldSize;
     private int goal;

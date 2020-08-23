@@ -20,6 +20,7 @@ public class XoPlayer {
     private final UUID userId;
     private final boolean gameOwner;
     private final int playerId;
+    private final String name;
     private final Character playerSymbol;
     private final Consumer<XoGameDto> feMessageSender;
 
