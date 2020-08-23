@@ -331,12 +331,9 @@ function useStateFromLocalStorage({key, validator, defaultValue}) {
             return validator(readFromLocalStorage(key, undefined))
         } else {
             const value = readFromLocalStorage(key, undefined)
-            console.log({m:'useStateFromLocalStorage',key,value})
             if (defaultValue !== undefined && value === undefined) {
-                console.log({m:'useStateFromLocalStorage.res',defaultValue})
                 return defaultValue
             } else {
-                console.log({m:'useStateFromLocalStorage.res',value})
                 return value
             }
         }
