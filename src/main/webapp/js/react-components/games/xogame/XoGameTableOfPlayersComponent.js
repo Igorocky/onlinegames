@@ -17,7 +17,10 @@ const XoGameTableOfPlayersComponent = ({players, currentPlayerId, playerIdToMove
                     :null
                 ),
                 RE.td({}, RE.img({src:`/img/xogame/${player.symbol}-symbol.svg`, style: {width:symbolSize, height:symbolSize}})),
-                RE.td({}, player.playerId==currentPlayerId?'You':''),
+                RE.td(
+                    {style: player.playerId==currentPlayerId ? {textDecoration: 'underline', fontWeight: 'bold'}:{}},
+                    hasValue(player.name)?player.name:'Incognito'
+                ),
             ))
         )
     )

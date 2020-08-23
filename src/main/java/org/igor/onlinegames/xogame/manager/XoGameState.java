@@ -123,6 +123,9 @@ public class XoGameState extends State implements GameState {
                     return false;
                 }
             }
+        } else if (userIdsEverConnected.contains(extractUserIdFromSession(session)) && super.bind(session, bindParams)) {
+            broadcastGameState();
+            return true;
         } else {
             return false;
         }
@@ -136,8 +139,16 @@ public class XoGameState extends State implements GameState {
 
     @RpcMethod
     public synchronized void setPlayerName(WebSocketSession session, String playerName) {
+        playerName = StringUtils.trimToNull(playerName);
         if (checkPlayerName(session, playerName)) {
             savePlayerNameToSession(session, playerName);
+            if (players != null) {
+                UUID userId = extractUserIdFromSession(session);
+                final String finalPlayerName = playerName;
+                players.stream()
+                        .filter(player -> player.getUserId().equals(userId))
+                        .forEach(player -> player.setName(finalPlayerName));
+            }
             sendMessageToFe(session, new XoGamePlayerNameWasSetMsgDto(playerName));
             broadcastGameState();
         }
@@ -319,6 +330,7 @@ public class XoGameState extends State implements GameState {
                     .phase(phase)
                     .numberOfWaitingPlayers(getNumberOfWaitingPlayers())
                     .namesOfWaitingPlayers(getConnectedPlayerNames(null))
+                    .currentPlayerName(player.getName())
                     .currentUserIsGameOwner(player.isGameOwner())
                     .fieldSize(fieldSize)
                     .goal(goal)
@@ -571,6 +583,7 @@ public class XoGameState extends State implements GameState {
         return sessions.stream()
                 .filter(session -> userId.equals(extractUserIdFromSession(session)))
                 .map(this::extractPlayerNameFromSession)
+                .filter(Objects::nonNull)
                 .findAny()
                 .orElse(null);
     }

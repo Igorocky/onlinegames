@@ -32,6 +32,7 @@ const XoGamePlayerView = ({openView}) => {
         max: PLAY_FIELD_SIZE_PER_CELL_MAX,
         defaultValue: 100
     })
+    const [anyCellClicked, setAnyCellClicked] = useState(false)
     const [soundsEnabled, setSoundsEnabled] = useStateFromLocalStorageBoolean({
         key: XO_GAME_SOUNDS_ENABLED,
         defaultValue: true
@@ -46,10 +47,10 @@ const XoGamePlayerView = ({openView}) => {
     }, [beState])
 
     useEffect(() => {
-        if (soundsEnabled && beState?.lastCell) {
+        if (soundsEnabled && anyCellClicked) {
             playAudio(audioUrl('on-move.mp3'))
         }
-    }, [beState])
+    }, [getLastCellStr()])
 
     function onMessageFromBackend(msg) {
         if (msg.type && msg.type == "state") {
@@ -72,15 +73,40 @@ const XoGamePlayerView = ({openView}) => {
         }
     }
 
+    function getLastCellStr() {
+        const lastCell = beState?.lastCell
+        return lastCell?(lastCell[0]+'-'+lastCell[1]):undefined
+    }
+
     function goToGameSelector() {
         openView(VIEW_URLS.gameSelector)
+    }
+
+    function renderJoinedPlayersInfo() {
+        const namesList = beState.namesOfWaitingPlayers.map(name => ({name, currPlayer:beState.currentPlayerName == name}))
+        const unnamedPlayersNum = beState.numberOfWaitingPlayers - beState.namesOfWaitingPlayers.length
+        if (unnamedPlayersNum > 0) {
+            namesList.push(
+                ...ints(1, unnamedPlayersNum).map(i => ({
+                    name: 'incognito#' + i,
+                    currPlayer:!hasValue(beState.currentPlayerName) && i == 1
+                }))
+            )
+        }
+        return RE.Typography({},
+            RE.span({}, `Players joined - ${beState.numberOfWaitingPlayers}: `),
+            namesList.map((nameObj, idx) => RE.span(
+                {key: nameObj.name, style: nameObj.currPlayer ? {textDecoration: 'underline', fontWeight: 'bold'}:{}},
+                nameObj.name + (idx == namesList.length-1 ? '' : ', ')
+            )),
+        )
     }
 
     function renderGameStatus() {
         if (beState.phase == "WAITING_FOR_PLAYERS_TO_JOIN") {
             return RE.Container.col.top.center({},{style:{marginBottom: "15px"}},
                 RE.Typography({variant:"h3"},(hasValue(beState.title)?(beState.title + ': '):'') + 'Waiting for players to join...'),
-                RE.Typography({},'Number of joined players: ' + beState.numberOfWaitingPlayers),
+                renderJoinedPlayersInfo(),
                 (beState.currentUserIsGameOwner && hasValue(beState.passcode))
                     ? RE.Typography({},'Passcode: ' + beState.passcode)
                     : null,
@@ -109,9 +135,10 @@ const XoGamePlayerView = ({openView}) => {
 
     function renderWinnerInfo() {
         if (hasValue(beState.winnerId)) {
+            const winner = getWinner();
             return beState.currentPlayerId==beState.winnerId
                 ? RE.span({style:{fontWeight:'bold', color:'forestgreen'}}, "You are the winner!")
-                : RE.Fragment({}, symbolToImg(getWinner().symbol), " won.")
+                : RE.Fragment({}, (hasValue(winner.name) ? winner.name : symbolToImg(winner.symbol)) + " won.")
         } else {
             return "It's a draw."
         }
@@ -142,6 +169,7 @@ const XoGamePlayerView = ({openView}) => {
     }
 
     function cellClicked({x,y}) {
+        setAnyCellClicked(true)
         backend.send("clickCell", {x,y})
     }
 

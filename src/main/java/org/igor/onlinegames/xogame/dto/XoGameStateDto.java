@@ -16,6 +16,7 @@ public class XoGameStateDto implements XoGameDto {
     private Long numberOfWaitingPlayers;
     private List<String> namesOfWaitingPlayers;
     private boolean currentUserIsGameOwner;
+    private String currentPlayerName;
     private int fieldSize;
     private int goal;
     private Integer timerSeconds;
