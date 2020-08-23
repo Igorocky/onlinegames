@@ -138,7 +138,7 @@ const XoGamePlayerView = ({openView}) => {
             const winner = getWinner();
             return beState.currentPlayerId==beState.winnerId
                 ? RE.span({style:{fontWeight:'bold', color:'forestgreen'}}, "You are the winner!")
-                : RE.Fragment({}, (hasValue(winner.name) ? winner.name : symbolToImg(winner.symbol)) + " won.")
+                : RE.Fragment({}, (hasValue(winner.name) ? winner.name : symbolToImg(winner.symbol)), " won.")
         } else {
             return "It's a draw."
         }
