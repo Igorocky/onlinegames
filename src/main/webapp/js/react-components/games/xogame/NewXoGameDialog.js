@@ -93,7 +93,7 @@ const NewXoGameDialog = ({openView, onCancel}) => {
                                     variant: 'outlined', label: 'Title (optional)',
                                     style: {width: inputElemsWidth},
                                     onChange: event => setTitle(event.target.value),
-                                    value: title
+                                    value: title?title:''
                                 },
                                 title
                             )
@@ -106,7 +106,7 @@ const NewXoGameDialog = ({openView, onCancel}) => {
                                     variant: 'outlined', label: 'Passcode (optional)',
                                     style: {width: inputElemsWidth},
                                     onChange: event => setPasscode(event.target.value),
-                                    value: passcode
+                                    value: passcode?passcode:''
                                 },
                                 passcode
                             )
