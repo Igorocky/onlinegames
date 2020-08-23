@@ -78,6 +78,7 @@ public class XoGameState extends State implements GameState {
     // TODO: 22.08.2020 add sounds
     // TODO: 22.08.2020 add automatic draw detection
     // TODO: 22.08.2020 rename buttons 'new xo game' / 'start game' / 'new game'
+    // TODO: 23.08.2020 filled shapes
 
     @Override
     protected void init(JsonNode args) {
