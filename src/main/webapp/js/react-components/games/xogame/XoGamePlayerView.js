@@ -32,7 +32,6 @@ const XoGamePlayerView = ({openView}) => {
         max: PLAY_FIELD_SIZE_PER_CELL_MAX,
         defaultValue: 100
     })
-    const [anyCellClicked, setAnyCellClicked] = useState(false)
     const [soundsEnabled, setSoundsEnabled] = useStateFromLocalStorageBoolean({
         key: XO_GAME_SOUNDS_ENABLED,
         defaultValue: true
@@ -46,11 +45,13 @@ const XoGamePlayerView = ({openView}) => {
         }
     }, [beState])
 
+    const prevLastCellStr = usePrevious(getLastCellStr())
+    const currLastCellStr = getLastCellStr()
     useEffect(() => {
-        if (soundsEnabled && anyCellClicked) {
+        if (soundsEnabled && prevLastCellStr != currLastCellStr) {
             playAudio(audioUrl('on-move.mp3'))
         }
-    }, [getLastCellStr()])
+    }, [currLastCellStr])
 
     function onMessageFromBackend(msg) {
         if (msg.type && msg.type == "state") {
@@ -169,7 +170,6 @@ const XoGamePlayerView = ({openView}) => {
     }
 
     function cellClicked({x,y}) {
-        setAnyCellClicked(true)
         backend.send("clickCell", {x,y})
     }
 

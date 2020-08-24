@@ -77,10 +77,15 @@ function audioUrl(fileRelPath) {
 const AUDIO_FILES_CACHE = {}
 
 function playAudio(audioFileUrl) {
-    let audio = AUDIO_FILES_CACHE[audioFileUrl]
+    let audioArr = AUDIO_FILES_CACHE[audioFileUrl]
+    if (!audioArr) {
+        audioArr = [new Audio(audioFileUrl)]
+        AUDIO_FILES_CACHE[audioFileUrl] = audioArr
+    }
+    let audio = audioArr.find(a => a.paused)
     if (!audio) {
         audio = new Audio(audioFileUrl)
-        AUDIO_FILES_CACHE[audioFileUrl] = audio
+        audioArr.push(audio)
     }
     audio.play()
 }
