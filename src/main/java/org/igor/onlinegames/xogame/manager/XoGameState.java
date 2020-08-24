@@ -19,10 +19,10 @@ import org.igor.onlinegames.xogame.dto.XoGameStateDto;
 import org.igor.onlinegames.xogame.dto.XoPlayerDto;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -76,7 +76,6 @@ public class XoGameState extends State implements GameState {
     private XoPlayer winner;
     private List<List<Integer>> winnerPath;
 
-    // TODO: 22.08.2020 add automatic draw detection
     // TODO: 23.08.2020 filled shapes
 
     @Override
@@ -384,7 +383,7 @@ public class XoGameState extends State implements GameState {
                 field[x][y] = player.getPlayerSymbol();
                 lastCell = listOf(x,y);
 
-                winnerPath = findWinnerPath();
+                winnerPath = findPath(true);
                 if (winnerPath != null) {
                     playerToMove = null;
                     Character winnerSymbol = field[winnerPath.get(0).get(0)][winnerPath.get(0).get(1)];
@@ -464,31 +463,25 @@ public class XoGameState extends State implements GameState {
         }
     }
 
-    private int countPathLength(int startX, int startY, int dx, int dy) {
-        final Character symbol = field[startX][startY];
-        if (symbol == null) {
-            return 0;
-        } else {
-            final int[] length = {0};
-            iterateCells(startX, startY, dx, dy, (x,y) -> {
-                final boolean doContinue = symbol.equals(field[x][y]);
-                if (doContinue) {
-                    length[0]++;
-                }
-                return doContinue;
-            });
-            return length[0];
-        }
+    private int countPathLength(BiFunction<Integer, Integer, Boolean> cellBelongsToPath, int startX, int startY, int dx, int dy) {
+        final int[] length = {0};
+        iterateCells(startX, startY, dx, dy, (x,y) -> {
+            final boolean doContinue = cellBelongsToPath.apply(x,y);
+            if (doContinue) {
+                length[0]++;
+            }
+            return doContinue;
+        });
+        return length[0];
     }
 
-    private List<List<Integer>> createWinnerPath(int startX, int startY, int dx, int dy) {
-        final Character symbol = field[startX][startY];
-        if (symbol == null || countPathLength(startX, startY, dx, dy) < goal) {
+    private List<List<Integer>> createPath(BiFunction<Integer, Integer, Boolean> cellBelongsToPath, int startX, int startY, int dx, int dy) {
+        if (countPathLength(cellBelongsToPath, startX, startY, dx, dy) < goal) {
             return null;
         } else {
             final ArrayList<List<Integer>> path = new ArrayList<>();
             iterateCells(startX, startY, dx, dy, (x,y) -> {
-                final boolean doContinue = symbol.equals(field[x][y]);
+                final boolean doContinue = cellBelongsToPath.apply(x,y);
                 if (doContinue) {
                     path.add(listOf(x,y));
                 }
@@ -498,14 +491,36 @@ public class XoGameState extends State implements GameState {
         }
     }
 
-    private List<List<Integer>> findWinnerPath() {
+    private List<List<Integer>> findPath(boolean forWinner) {
         for (int x = 0; x < fieldSize; x++) {
             for (int y = 0; y < fieldSize; y++) {
                 for (int dx = -1; dx < 2; dx++) {
                     for (int dy = -1; dy < 2; dy++) {
-                        List<List<Integer>> winnerPath = createWinnerPath(x, y, dx, dy);
-                        if (winnerPath != null) {
-                            return winnerPath;
+                        Character symbol = field[x][y];
+                        BiFunction<Integer, Integer, Boolean> contFunc = null;
+                        if (forWinner) {
+                            if (symbol != null) {
+                                contFunc = (xx,yy) -> symbol.equals(field[xx][yy]);
+                            }
+                        } else {
+                            if (symbol != null) {
+                                contFunc = (xx,yy) -> symbol.equals(field[xx][yy]) || null == field[xx][yy];
+                            } else {
+                                final Character[] firstFound = {null};
+                                contFunc = (xx,yy) -> {
+                                    final Character currSymb = field[xx][yy];
+                                    if (firstFound[0] == null && currSymb != null) {
+                                        firstFound[0] = currSymb;
+                                    }
+                                    return null == currSymb || Objects.equals(firstFound[0], currSymb);
+                                };
+                            }
+                        }
+                        if (contFunc != null) {
+                            List<List<Integer>> path = createPath(contFunc, x, y, dx, dy);
+                            if (path != null) {
+                                return path;
+                            }
                         }
                     }
                 }
@@ -515,7 +530,7 @@ public class XoGameState extends State implements GameState {
     }
 
     private boolean isDraw() {
-        return !Arrays.asList(field).stream().flatMap(r -> Arrays.asList(r).stream()).anyMatch(Objects::isNull);
+        return CollectionUtils.isEmpty(findPath(false));
     }
 
     private Integer parseTimerValue(String timerStr) {
