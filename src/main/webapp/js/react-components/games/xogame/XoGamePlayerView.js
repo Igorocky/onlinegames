@@ -220,20 +220,20 @@ const XoGamePlayerView = ({openView}) => {
                         disabled: playFieldSizePerCell == PLAY_FIELD_SIZE_PER_CELL_MAX,
                         onClick: () => zoomField(1.1),
                     },
-                    RE.Icon({}, 'zoom_in')
+                    RE.Icon({fontSize:"large"}, 'zoom_in')
                 ),
                 RE.Button({
                         style:{},
                         disabled: playFieldSizePerCell == PLAY_FIELD_SIZE_PER_CELL_MIN,
                         onClick: () => zoomField(1/1.1),
                     },
-                    RE.Icon({}, 'zoom_out')
+                    RE.Icon({fontSize:"large"}, 'zoom_out')
                 ),
                 RE.Button({
                         style:{},
                         onClick: () => setSoundsEnabled(!soundsEnabled),
                     },
-                    soundsEnabled?RE.Icon({}, 'volume_up'):RE.Icon({}, 'volume_off')
+                    soundsEnabled?RE.Icon({fontSize:"large"}, 'volume_up'):RE.Icon({fontSize:"large"}, 'volume_off')
                 ),
                 RE.Button({
                         style:{},
@@ -242,7 +242,7 @@ const XoGamePlayerView = ({openView}) => {
                             setPlayerNameDialogOpened(true)
                         },
                     },
-                    RE.Icon({}, 'account_box')
+                    RE.Icon({fontSize:"large"}, 'account_box')
                 )
             ),
         )
