@@ -8,14 +8,14 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    version="1.1"
-   width="55.186909"
-   height="53.048153"
-   viewBox="-3 -33 7.2061679 6.9268946"
+   width="4.18121"
+   height="4.18121"
+   viewBox="-3 -53 6.4367447 7.2061756"
    id="svg2"
    inkscape:version="0.91 r13725"
    sodipodi:docname="a-symbol.svg">
   <metadata
-     id="metadata60">
+     id="metadata4345">
     <rdf:RDF>
       <cc:Work
          rdf:about="">
@@ -27,7 +27,7 @@
     </rdf:RDF>
   </metadata>
   <defs
-     id="defs58" />
+     id="defs4343" />
   <sodipodi:namedview
      pagecolor="#ffffff"
      bordercolor="#666666"
@@ -39,11 +39,11 @@
      inkscape:pageshadow="2"
      inkscape:window-width="1920"
      inkscape:window-height="1018"
-     id="namedview56"
+     id="namedview4341"
      showgrid="false"
-     inkscape:zoom="0.85600798"
-     inkscape:cx="-464.22439"
-     inkscape:cy="89.607598"
+     inkscape:zoom="181.01934"
+     inkscape:cx="1.326051"
+     inkscape:cy="1.9164858"
      inkscape:window-x="1358"
      inkscape:window-y="-8"
      inkscape:window-maximized="1"
@@ -53,8 +53,8 @@
      fit-margin-right="0"
      fit-margin-bottom="0" />
   <polygon
-     transform="translate(-24.396916,-24.250094)"
-     points="27.85317,-5.927051 25.881678,-6.2135255 25,-8 24.118322,-6.2135255 22.14683,-5.927051 23.573415,-4.5364745 23.236644,-2.572949 25,-3.5 26.763356,-2.572949 26.426585,-4.5364745 "
-     id="polygon44"
-     style="fill:none;stroke:#ba55d3;stroke-width:1.5;stroke-linejoin:round" />
+     transform="translate(-44.793291,-24.098292)"
+     style="fill:#da70d6;stroke:#da70d6;stroke-width:1.5;stroke-linejoin:round"
+     points="43.573415,-24.536475 43.236644,-22.572949 45,-23.5 46.763356,-22.572949 46.426585,-24.536475 47.85317,-25.927051 45.881678,-26.213525 45,-28 44.118322,-26.213525 42.14683,-25.927051 "
+     id="polygon4179" />
 </svg>

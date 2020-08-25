@@ -41,48 +41,53 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
     function renderSymbol({centerEx, symbol, cellSize}) {
         const key = `cell-symbol-${centerEx.start.x}-${centerEx.start.y}`
         const cellAbsoluteSize = centerEx.length() * cellSize
-        const strokeWidth = cellAbsoluteSize * 0.15;
+        const strokeWidth = cellAbsoluteSize * 0.15
         if (symbol === 'x') {
+            const xStrokeWidth = cellAbsoluteSize * 0.30
             return [
                 centerEx.rotate(45),
                 centerEx.rotate(135),
                 centerEx.rotate(-45),
                 centerEx.rotate(-135)
             ]
-                .map(vec => vec.scale(cellSize*0.35))
+                .map(vec => vec.scale(cellSize*0.25))
                 .map((vec, idx) => vec.toSvgLine({
-                    key: key + '-' + idx, stroke: 'blue', strokeWidth, strokeLinecap: 'round'
+                    key: key + '-' + idx, stroke: 'dodgerblue', strokeWidth:xStrokeWidth, strokeLinecap: 'round'
                 }))
         } else if (symbol === 'o') {
+            const symbolColor = 'sandybrown'
             return [
                 svgCircle({
                     key,
                     c: centerEx.start,
                     r: cellAbsoluteSize * 0.3,
-                    props: {fill: 'transparent', stroke: 'orange', strokeWidth}
+                    props: {fill: symbolColor, stroke: symbolColor, strokeWidth}
                 })
             ]
         } else if (symbol === 's') {
             const baseVector = centerEx.rotate(45).scale(cellSize*0.37)
+            const symbolColor = 'lightcoral'
             return [
                 svgPolygon({
                     key,
                     points: [baseVector.end, baseVector.rotate(90).end, baseVector.rotate(180).end, baseVector.rotate(270).end],
-                    props: {fill: 'transparent', stroke: 'crimson', strokeWidth, strokeLinejoin: 'round'}
+                    props: {fill: symbolColor, stroke: symbolColor, strokeWidth, strokeLinejoin: 'round'}
                 })
             ]
         } else if (symbol === 't') {
-            const baseVector = centerEx.rotate(90).translate(null, -cellSize*0.07).scale(cellSize*0.3)
+            const baseVector = centerEx.rotate(90).translate(null, -cellSize*0.07).scale(cellSize*0.34)
+            const symbolColor = 'mediumaquamarine'
             return [
                 svgPolygon({
                     key,
                     points: [baseVector.end, baseVector.rotate(120).end, baseVector.rotate(-120).end],
-                    props: {fill: 'transparent', stroke: 'green', strokeWidth, strokeLinejoin: 'round'}
+                    props: {fill: symbolColor, stroke: symbolColor, strokeWidth, strokeLinejoin: 'round'}
                 })
             ]
         } else if (symbol === 'a') {
             const baseVector1 = centerEx.rotate(90).scale(cellSize*0.3)
             const baseVector2 = centerEx.rotate(90+36).scale(cellSize*0.15)
+            const symbolColor = 'orchid'
             return [
                 svgPolygon({
                     key,
@@ -98,7 +103,7 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
                         baseVector1.rotate(72*4).end,
                         baseVector2.rotate(72*4).end,
                     ],
-                    props: {fill: 'transparent', stroke: 'mediumorchid', strokeWidth, strokeLinejoin: 'round'}
+                    props: {fill: symbolColor, stroke: symbolColor, strokeWidth, strokeLinejoin: 'round'}
                 })
             ]
         }

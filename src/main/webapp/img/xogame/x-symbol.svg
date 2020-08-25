@@ -8,14 +8,14 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    version="1.1"
-   width="49.510044"
-   height="49.510048"
-   viewBox="-3 -33 6.4648972 6.4648977"
+   width="32.324818"
+   height="32.324818"
+   viewBox="-3 -53 6.5658343 6.5658343"
    id="svg2"
    inkscape:version="0.91 r13725"
    sodipodi:docname="x-symbol.svg">
   <metadata
-     id="metadata60">
+     id="metadata4345">
     <rdf:RDF>
       <cc:Work
          rdf:about="">
@@ -27,7 +27,7 @@
     </rdf:RDF>
   </metadata>
   <defs
-     id="defs58" />
+     id="defs4343" />
   <sodipodi:namedview
      pagecolor="#ffffff"
      bordercolor="#666666"
@@ -39,11 +39,11 @@
      inkscape:pageshadow="2"
      inkscape:window-width="1920"
      inkscape:window-height="1018"
-     id="namedview56"
+     id="namedview4341"
      showgrid="false"
-     inkscape:zoom="2.4211562"
-     inkscape:cx="-127.5579"
-     inkscape:cy="93.361411"
+     inkscape:zoom="3.0794524"
+     inkscape:cx="110.49736"
+     inkscape:cy="25.417301"
      inkscape:window-x="1358"
      inkscape:window-y="-8"
      inkscape:window-maximized="1"
@@ -53,31 +53,31 @@
      fit-margin-right="0"
      fit-margin-bottom="0" />
   <line
-     style="stroke:#0000ff;stroke-width:1.49999988;stroke-linecap:round"
-     x1="0.23244962"
-     y1="-29.76755"
-     x2="2.7073221"
-     y2="-32.242424"
-     id="line32" />
+     style="stroke:#1e90ff;stroke-width:3;stroke-linecap:round"
+     x1="0.28291732"
+     y1="-49.717083"
+     x2="2.0506842"
+     y2="-51.484848"
+     id="line4163" />
   <line
-     style="stroke:#0000ff;stroke-width:1.49999988;stroke-linecap:round"
-     x1="0.23244962"
-     y1="-29.76755"
-     x2="-2.242425"
-     y2="-32.242424"
-     id="line34" />
+     style="stroke:#1e90ff;stroke-width:3;stroke-linecap:round"
+     x1="0.28291732"
+     y1="-49.717083"
+     x2="-1.4848496"
+     y2="-51.484848"
+     id="line4165" />
   <line
-     style="stroke:#0000ff;stroke-width:1.49999988;stroke-linecap:round"
-     x1="0.23244962"
-     y1="-29.76755"
-     x2="2.7073221"
-     y2="-27.292677"
-     id="line36" />
+     style="stroke:#1e90ff;stroke-width:3;stroke-linecap:round"
+     x1="0.28291732"
+     y1="-49.717083"
+     x2="2.0506842"
+     y2="-47.949314"
+     id="line4167" />
   <line
-     style="stroke:#0000ff;stroke-width:1.49999988;stroke-linecap:round"
-     x1="0.23244962"
-     y1="-29.76755"
-     x2="-2.242425"
-     y2="-27.292677"
-     id="line38" />
+     style="stroke:#1e90ff;stroke-width:3;stroke-linecap:round"
+     x1="0.28291732"
+     y1="-49.717083"
+     x2="-1.4848496"
+     y2="-47.949314"
+     id="line4169" />
 </svg>

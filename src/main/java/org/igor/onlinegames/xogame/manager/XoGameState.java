@@ -76,8 +76,6 @@ public class XoGameState extends State implements GameState {
     private XoPlayer winner;
     private List<List<Integer>> winnerPath;
 
-    // TODO: 23.08.2020 filled shapes
-
     @Override
     protected void init(JsonNode args) {
         fieldSize = args.get(FIELD_SIZE).asInt();
