@@ -213,8 +213,7 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
     }
 
     function renderLineOfFrame({ex, margin, symbol, cellSize, amount}) {
-        let ex2 = ex.translate(ex.rotate(90), margin/2)
-        ex2 = ex2.translate(ex2.rotate(180), margin/2).scale(margin/cellSize)
+        let ex2 = ex.translate(ex.rotate(180), margin/2).scale(margin/cellSize)
         const shift = ex.rotate(90).scale(cellSize)
 
         const result = []
@@ -230,14 +229,14 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
     }
 
     function renderFrame({ex, boundaries, margin, symbol, cellSize, fieldSize}) {
-        const amount = fieldSize
+        const amount = 1
         return [
             ex.translateTo(new Point(boundaries.minX, boundaries.maxY)),
             ex.rotate(90).translateTo(new Point(boundaries.maxX, boundaries.maxY)),
             ex.rotate(180).translateTo(new Point(boundaries.maxX, boundaries.minY)),
             ex.rotate(270).translateTo(new Point(boundaries.minX, boundaries.minY))
         ]
-            .map(ex => ex.translate(ex.rotate(90), margin))
+            .map(ex => ex.translate(ex.rotate(-90), margin/2.2))
             .flatMap(ex => renderLineOfFrame({ex, margin, symbol, cellSize, amount}))
     }
 
@@ -261,7 +260,8 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
             background,
             ...grid.svgElems,
             ...renderCells({ex, cellSize, tableData}),
-            frameSymbol?renderFrame({ex, boundaries: grid.boundaries, margin, symbol:frameSymbol, cellSize, fieldSize}):null
+            frameSymbol?renderFrame({ex, boundaries: grid.boundaries, margin, symbol:frameSymbol, cellSize, fieldSize}):null,
+            !frameSymbol?SVG.rect({key:'foreground', x:-1000, y:-1000, width:2000, height:2000, fill:'black', opacity:0.1}):null,
         )
     }
 
