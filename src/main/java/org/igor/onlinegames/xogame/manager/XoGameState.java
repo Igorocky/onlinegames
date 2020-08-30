@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.igor.onlinegames.common.OnlinegamesUtils;
 import org.igor.onlinegames.exceptions.OnlinegamesException;
 import org.igor.onlinegames.model.GameState;
+import org.igor.onlinegames.model.UserSessionData;
 import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
 import org.igor.onlinegames.xogame.dto.XoCellDto;
@@ -98,6 +99,11 @@ public class XoGameState extends State implements GameState {
     private XoGameRecordDto history;
     private final static DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd");
     private final static DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd__HH_mm_ss");
+
+    // TODO: 30.08.2020 show games in progress
+    // TODO: 30.08.2020 add 'draw' button
+    // TODO: 30.08.2020 add 'abandon' button
+    // TODO: 30.08.2020 add 'home' button to player view
 
     @Override
     protected void init(JsonNode args) {
@@ -716,5 +722,10 @@ public class XoGameState extends State implements GameState {
     @Override
     public String getShortDescription() {
         return "F " + fieldSize + " / G " + goal + (timerSeconds == null ? "" : " / T " + timerSeconds);
+    }
+
+    @Override
+    public boolean isOwner(UserSessionData userData) {
+        return userData.getUserId().equals(gameOwnerUserId);
     }
 }

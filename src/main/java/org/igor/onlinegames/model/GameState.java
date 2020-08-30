@@ -7,4 +7,5 @@ public interface GameState {
     String getTitle();
     boolean hasPasscode();
     String getShortDescription();
+    boolean isOwner(UserSessionData userData);
 }

@@ -14,4 +14,5 @@ public class GameInfoDto {
     private String title;
     private String shortDescription;
     private boolean hasPasscode;
+    private boolean currUserIsOwner;
 }

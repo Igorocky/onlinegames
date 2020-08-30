@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
@@ -101,7 +100,7 @@ public class GameManager {
                                 .filter(player -> userId.equals(player.getUserId()))
                                 .findAny()
                                 .isPresent()
-                ).sorted(Comparator.comparing(XoGameRecordDto::getStartedAt))
+                ).sorted(Comparator.comparing(XoGameRecordDto::getStartedAt).reversed())
                 .map(
                         game -> {
                             final XoGamePlayerInfoDto winner =
@@ -144,6 +143,7 @@ public class GameManager {
                             .title(StringUtils.abbreviate(gameState.getTitle(), 50))
                             .shortDescription(gameState.getShortDescription())
                             .hasPasscode(gameState.hasPasscode())
+                            .currUserIsOwner(gameState.isOwner(user.getUserData()))
                             .build();
                 }).collect(Collectors.toList());
     }

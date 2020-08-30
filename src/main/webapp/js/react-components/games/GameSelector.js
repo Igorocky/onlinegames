@@ -86,7 +86,13 @@ const GameSelector = ({openView}) => {
                                 RE.TableCell({}, gameDto.title),
                                 RE.TableCell({}, gameDto.shortDescription),
                                 RE.TableCell({}, gameDto.hasPasscode?RE.Icon({fontSize:'small'}, 'lock'):null),
-                                RE.TableCell({}, RE.Button({onClick: () => joinGame(gameDto.gameType, gameDto.gameId)}, "Join")),
+                                RE.TableCell({}, RE.Button(
+                                    {
+                                        ...(gameDto.currUserIsOwner?({variant:"contained", color:"primary"}):{}),
+                                        onClick: () => joinGame(gameDto.gameType, gameDto.gameId)
+                                    },
+                                    "Join"
+                                )),
                             ))
                         )
                     )
