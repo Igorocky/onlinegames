@@ -11,7 +11,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class XoGamePlayerInfo {
+public class XoGamePlayerInfoDto {
     private UUID userId;
     private int playerId;
     private String playerName;

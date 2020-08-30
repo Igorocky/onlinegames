@@ -19,9 +19,9 @@ import org.igor.onlinegames.xogame.dto.XoGamePlayerNameIsOccupiedErrorDto;
 import org.igor.onlinegames.xogame.dto.XoGamePlayerNameWasSetMsgDto;
 import org.igor.onlinegames.xogame.dto.XoGameStateDto;
 import org.igor.onlinegames.xogame.dto.XoPlayerDto;
-import org.igor.onlinegames.xogame.dto.history.XoGameMove;
-import org.igor.onlinegames.xogame.dto.history.XoGamePlayerInfo;
-import org.igor.onlinegames.xogame.dto.history.XoGameRecord;
+import org.igor.onlinegames.xogame.dto.history.XoGameMoveDto;
+import org.igor.onlinegames.xogame.dto.history.XoGamePlayerInfoDto;
+import org.igor.onlinegames.xogame.dto.history.XoGameRecordDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
@@ -95,8 +95,9 @@ public class XoGameState extends State implements GameState {
     private XoPlayer winner;
     private List<List<Integer>> winnerPath;
 
-    private XoGameRecord history;
+    private XoGameRecordDto history;
     private final static DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd");
+    private final static DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd__HH_mm_ss");
 
     @Override
     protected void init(JsonNode args) {
@@ -125,8 +126,8 @@ public class XoGameState extends State implements GameState {
             } else if (!checkPasscode(session, bindParams)) {
                 return false;
             } else {
-                String playerName = getNonEmptyTextFromParams(bindParams, "playerName");
-                if (!checkPlayerName(session, playerName)) {
+                String playerName = sanitizePlayerName(getNonEmptyTextFromParams(bindParams, "playerName"));
+                if (!checkPlayerNameIsUnique(session, playerName)) {
                     return false;
                 } else {
                     savePlayerNameToSession(session, playerName);
@@ -155,8 +156,8 @@ public class XoGameState extends State implements GameState {
 
     @RpcMethod
     public synchronized void setPlayerName(WebSocketSession session, String playerName) {
-        playerName = StringUtils.trimToNull(playerName);
-        if (checkPlayerName(session, playerName)) {
+        playerName = sanitizePlayerName(playerName);
+        if (checkPlayerNameIsUnique(session, playerName)) {
             savePlayerNameToSession(session, playerName);
             if (players != null) {
                 UUID userId = extractUserIdFromSession(session);
@@ -209,15 +210,16 @@ public class XoGameState extends State implements GameState {
                 scheduledExecutorService = Executors.newScheduledThreadPool(1);
                 startTimerForCurrentPlayer();
             }
-            history = XoGameRecord.builder()
+            history = XoGameRecordDto.builder()
                     .gameId(stateId)
                     .startedAt(Instant.now())
                     .fieldSize(fieldSize)
+                    .goal(goal)
                     .secondsPerMove(timerSeconds)
                     .players(
                             players.stream()
                             .map(
-                                    playerState -> XoGamePlayerInfo.builder()
+                                    playerState -> XoGamePlayerInfoDto.builder()
                                             .userId(playerState.getUserId())
                                             .playerId(playerState.getPlayerId())
                                             .playerName(playerState.getName())
@@ -234,6 +236,15 @@ public class XoGameState extends State implements GameState {
     public synchronized void clickCell(WebSocketSession session, int x, int y) {
         if (phase == XoGamePhase.IN_PROGRESS) {
             executeOnBehalfOfPlayer(session, player -> clickCell(player, x, y));
+        }
+    }
+
+    protected static String sanitizePlayerName(String playerName) {
+        final String trimmed = StringUtils.trimToNull(playerName);
+        if (trimmed != null) {
+            return trimmed.replaceAll("\\s", "_");
+        } else {
+            return null;
         }
     }
 
@@ -282,7 +293,7 @@ public class XoGameState extends State implements GameState {
         return result;
     }
 
-    private boolean checkPlayerName(WebSocketSession session, String playerName) {
+    private boolean checkPlayerNameIsUnique(WebSocketSession session, String playerName) {
         if (playerName == null) {
             return true;
         } else {
@@ -421,7 +432,7 @@ public class XoGameState extends State implements GameState {
                     timerHandle = null;
                 }
                 history.getMoves().add(
-                        XoGameMove.builder()
+                        XoGameMoveDto.builder()
                                 .moveNumber(history.getMoves().size()+1)
                                 .playerId(player.getPlayerId())
                                 .time(Instant.now())
@@ -462,8 +473,14 @@ public class XoGameState extends State implements GameState {
         }
     }
 
+    public static String getGameHistoryDirPath(String historyPath, Instant startedAt) {
+        return historyPath + "/" + DATE_FORMATTER.format(startedAt.atZone(ZoneOffset.UTC));
+    }
+
     protected static String getGameHistoryFilePath(String historyPath, Instant startedAt, UUID gameId) {
-        return historyPath + "/" + DATE_FORMATTER.format(startedAt.atZone(ZoneOffset.UTC)) + "/xogame-" + gameId + ".json";
+        return getGameHistoryDirPath(historyPath, startedAt)
+                + "/xogame-" + DATE_TIME_FORMATTER.format(startedAt.atZone(ZoneOffset.UTC))
+                + "-" + gameId + ".json";
     }
 
     @SneakyThrows

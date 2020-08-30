@@ -73,7 +73,12 @@ public class StateManager {
         stateObject.setLastInMsgAt(clock.instant());
         try {
             return rpcDispatcher.dispatchRpcCall(
-                    methodName, params, stateObject.getMethodMap(), new RpcAutowiredParamsLookupImpl(session)
+                    methodName,
+                    params,
+                    stateObject.getMethodMap(),
+                    RpcAutowiredParamsLookupImpl.builder()
+                            .session(session)
+                            .build()
             );
         } catch (Exception ex) {
             LOG.error(ex.getMessage(), ex);

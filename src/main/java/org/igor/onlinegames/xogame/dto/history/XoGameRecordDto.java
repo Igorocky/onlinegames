@@ -17,7 +17,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class XoGameRecord {
+public class XoGameRecordDto {
     private UUID gameId;
     @JsonSerialize(using = InstantSerializer.class)
     @JsonDeserialize(using = InstantDeserializer.class)
@@ -26,10 +26,11 @@ public class XoGameRecord {
     @JsonDeserialize(using = InstantDeserializer.class)
     private Instant finishedAt;
     private int fieldSize;
+    private int goal;
     private Integer secondsPerMove;
-    private List<XoGamePlayerInfo> players;
-    private List<XoGameMove> moves;
+    private List<XoGamePlayerInfoDto> players;
+    private List<XoGameMoveDto> moves;
     private Boolean draw;
     private List<List<Integer>> winnerPath;
-    private int winnerId;
+    private Integer winnerId;
 }

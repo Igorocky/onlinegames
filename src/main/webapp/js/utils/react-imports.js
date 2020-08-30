@@ -273,36 +273,38 @@ function useConfirmActionDialog() {
     return [openConfirmActionDialog, closeConfirmActionDialog, renderConfirmActionDialog]
 }
 
-function reTabs({selectedTab,onTabSelected,onTabMouseUp,tabs}) {
+function reTabs({selectedTabKey,onTabSelected,onTabMouseUp,tabs}) {
     return RE.Container.col.top.left({}, {style:{marginBottom:"5px"}},
         RE.Paper({square:true},
-            RE.Tabs({value:selectedTab,
+            RE.Tabs({value:selectedTabKey,
                     indicatorColor:"primary",
                     textColor:"primary",
-                    onChange:onTabSelected?(event,newTab)=>onTabSelected(newTab):null
+                    onChange:onTabSelected?(event,newTabKey)=>onTabSelected(newTabKey):null
                 },
-                _.pairs(tabs).map(([tabId,tabData]) => RE.Tab({
-                    key:tabId,
+                _.pairs(tabs).map(([tabKey,tabData]) => RE.Tab({
+                    key:tabKey,
                     label:tabData.label,
-                    value:tabId,
-                    onMouseUp: onTabMouseUp?event=>onTabMouseUp(event,tabId):null,
+                    value:tabKey,
+                    onMouseUp: onTabMouseUp?event=>onTabMouseUp(event,tabKey):null,
                     disabled:tabData.disabled
                 }))
             )
         ),
-        tabs[selectedTab].render()
+        tabs[selectedTabKey].render()
     )
 }
 
 function useTabs({onTabSelected,onTabMouseUp,tabs}) {
-    const [selectedTab, setSelectedTab] = useState(() => _.pairs(tabs)[0][0])
+    const [selectedTabKey, setSelectedTab] = useState(() => _.pairs(tabs)[0][0])
 
     return {
         renderTabs: () => reTabs({
-            selectedTab,
+            selectedTabKey,
             onTabSelected: selectedTabKey => {
                 setSelectedTab(selectedTabKey)
-                onTabSelected(selectedTabKey)
+                if (onTabSelected) {
+                    onTabSelected(selectedTabKey)
+                }
             },
             onTabMouseUp,
             tabs

@@ -15,7 +15,7 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class XoGameMove {
+public class XoGameMoveDto {
     private int moveNumber;
     private int playerId;
     @JsonSerialize(using = InstantSerializer.class)
