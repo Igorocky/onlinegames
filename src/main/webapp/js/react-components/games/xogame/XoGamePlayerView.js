@@ -251,6 +251,12 @@ const XoGamePlayerView = ({openView}) => {
                         },
                     },
                     RE.Icon({fontSize:"large"}, 'account_box')
+                ),
+                RE.Button({
+                        style:{},
+                        onClick: goToGameSelector,
+                    },
+                    RE.Icon({fontSize:"large"}, 'home')
                 )
             ),
         )
