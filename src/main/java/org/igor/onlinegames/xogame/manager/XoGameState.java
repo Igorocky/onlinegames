@@ -1,6 +1,8 @@
 package org.igor.onlinegames.xogame.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
 import org.igor.onlinegames.common.OnlinegamesUtils;
 import org.igor.onlinegames.exceptions.OnlinegamesException;
@@ -17,13 +19,24 @@ import org.igor.onlinegames.xogame.dto.XoGamePlayerNameIsOccupiedErrorDto;
 import org.igor.onlinegames.xogame.dto.XoGamePlayerNameWasSetMsgDto;
 import org.igor.onlinegames.xogame.dto.XoGameStateDto;
 import org.igor.onlinegames.xogame.dto.XoPlayerDto;
+import org.igor.onlinegames.xogame.dto.history.XoGameMove;
+import org.igor.onlinegames.xogame.dto.history.XoGamePlayerInfo;
+import org.igor.onlinegames.xogame.dto.history.XoGameRecord;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -46,6 +59,12 @@ import static org.igor.onlinegames.common.OnlinegamesUtils.nullSafeGetter;
 @Component("XoGame")
 @Scope("prototype")
 public class XoGameState extends State implements GameState {
+
+    @Value("${app.xogame.history-path}")
+    private String historyPath;
+    @Autowired
+    private ObjectMapper mapper;
+
     private static final String PLAYER_STATE = "playerState";
     private static final List<Character> POSSIBLE_SYMBOLS = listOf('x','o','s','t','a');
     public static final int MAX_NUMBER_OF_PLAYERS = POSSIBLE_SYMBOLS.size();
@@ -75,6 +94,9 @@ public class XoGameState extends State implements GameState {
     private XoPlayer playerToMove;
     private XoPlayer winner;
     private List<List<Integer>> winnerPath;
+
+    private XoGameRecord history;
+    private final static DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd");
 
     @Override
     protected void init(JsonNode args) {
@@ -142,6 +164,9 @@ public class XoGameState extends State implements GameState {
                 players.stream()
                         .filter(player -> player.getUserId().equals(userId))
                         .forEach(player -> player.setName(finalPlayerName));
+                history.getPlayers().stream()
+                        .filter(player -> player.getUserId().equals(userId))
+                        .forEach(player -> player.setPlayerName(finalPlayerName));
             }
             sendMessageToFe(session, new XoGamePlayerNameWasSetMsgDto(playerName));
             broadcastGameState();
@@ -184,6 +209,23 @@ public class XoGameState extends State implements GameState {
                 scheduledExecutorService = Executors.newScheduledThreadPool(1);
                 startTimerForCurrentPlayer();
             }
+            history = XoGameRecord.builder()
+                    .gameId(stateId)
+                    .startedAt(Instant.now())
+                    .fieldSize(fieldSize)
+                    .secondsPerMove(timerSeconds)
+                    .players(
+                            players.stream()
+                            .map(
+                                    playerState -> XoGamePlayerInfo.builder()
+                                            .userId(playerState.getUserId())
+                                            .playerId(playerState.getPlayerId())
+                                            .playerName(playerState.getName())
+                                            .build()
+                            ).collect(Collectors.toList())
+                    )
+                    .moves(new LinkedList<>())
+                    .build();
             broadcastGameState();
         }
     }
@@ -378,20 +420,32 @@ public class XoGameState extends State implements GameState {
                     timerHandle.cancel(true);
                     timerHandle = null;
                 }
+                history.getMoves().add(
+                        XoGameMove.builder()
+                                .moveNumber(history.getMoves().size()+1)
+                                .playerId(player.getPlayerId())
+                                .time(Instant.now())
+                                .x(x)
+                                .y(y)
+                                .build()
+                );
                 field[x][y] = player.getPlayerSymbol();
                 lastCell = listOf(x,y);
 
                 winnerPath = findPath(true);
                 if (winnerPath != null) {
+                    history.setWinnerPath(winnerPath);
                     playerToMove = null;
                     Character winnerSymbol = field[winnerPath.get(0).get(0)][winnerPath.get(0).get(1)];
                     winner = players.stream()
                             .filter(xoPlayer -> winnerSymbol.equals(xoPlayer.getPlayerSymbol()))
                             .findFirst()
                             .get();
+                    history.setWinnerId(winner.getPlayerId());
                     phase = XoGamePhase.FINISHED;
                 } else if (isDraw()) {
                     playerToMove = null;
+                    history.setDraw(true);
                     phase = XoGamePhase.FINISHED;
                 } else {
                     setNextPlayerToMove();
@@ -403,7 +457,21 @@ public class XoGameState extends State implements GameState {
             }
             if (phase == XoGamePhase.FINISHED) {
                 shutdownTimer();
+                saveHistory();
             }
+        }
+    }
+
+    protected static String getGameHistoryFilePath(String historyPath, Instant startedAt, UUID gameId) {
+        return historyPath + "/" + DATE_FORMATTER.format(startedAt.atZone(ZoneOffset.UTC)) + "/xogame-" + gameId + ".json";
+    }
+
+    @SneakyThrows
+    private void saveHistory() {
+        final File file = new File(getGameHistoryFilePath(historyPath, history.getStartedAt(), history.getGameId()));
+        file.getParentFile().mkdirs();
+        try (final FileWriter fileWriter = new FileWriter(file)) {
+            fileWriter.write(mapper.writeValueAsString(history));
         }
     }
 

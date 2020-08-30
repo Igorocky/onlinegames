@@ -26,7 +26,7 @@ public abstract class State {
     private Instant lastOutMsgAt;
     protected List<WebSocketSession> sessions = new ArrayList<>();
     private Clock clock = Clock.systemUTC();
-    private UUID stateId;
+    protected UUID stateId;
 
     @Autowired
     private ObjectMapper mapper;
