@@ -168,6 +168,7 @@ const GameSelector = ({openView}) => {
 
     function renderHistory() {
         return RE.Container.col.top.left({},{},
+            history?.length?RE.span({style:{color:'red'}}, 'This history of games may be erased at any moment...'):null,
             renderTableWithHistory()
         )
     }

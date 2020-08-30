@@ -102,8 +102,8 @@ public class XoGameState extends State implements GameState {
 
     // TODO: 30.08.2020 show games in progress
     // TODO: 30.08.2020 add 'draw' button
-    // TODO: 30.08.2020 add 'abandon' button
     // TODO: 30.08.2020 add 'home' button to player view
+    // TODO: 30.08.2020 a better indicator of your move
 
     @Override
     protected void init(JsonNode args) {
@@ -176,6 +176,20 @@ public class XoGameState extends State implements GameState {
                         .forEach(player -> player.setPlayerName(finalPlayerName));
             }
             sendMessageToFe(session, new XoGamePlayerNameWasSetMsgDto(playerName));
+            broadcastGameState();
+        }
+    }
+
+    @RpcMethod
+    public synchronized void discard(WebSocketSession session) {
+        if (phase != XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
+            return;
+        }
+        final UUID userId = extractUserIdFromSession(session);
+        if (!userId.equals(gameOwnerUserId)) {
+            sendMessageToFe(session, new XoGameErrorDto("You don't have permissions to discard game."));
+        } else {
+            phase = XoGamePhase.DISCARDED;
             broadcastGameState();
         }
     }
@@ -376,7 +390,7 @@ public class XoGameState extends State implements GameState {
     }
 
     private XoGameStateDto createViewOfCurrentState(XoPlayer player) {
-        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
+        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN || phase == XoGamePhase.DISCARDED) {
             return XoGameStateDto.builder()
                     .title(title)
                     .passcode(player.ifGameOwner(() -> passcode))
@@ -503,7 +517,7 @@ public class XoGameState extends State implements GameState {
     }
 
     private void broadcastGameState() {
-        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
+        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN || phase == XoGamePhase.DISCARDED) {
             sessions.forEach(session -> sendMessageToFe(session, createViewOfCurrentState(sessionToMinimalPlayer(session))));
         } else {
             players.forEach(player -> player.sendMessageToFe(createViewOfCurrentState(player)));

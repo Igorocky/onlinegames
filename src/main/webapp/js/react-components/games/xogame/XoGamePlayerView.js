@@ -24,6 +24,8 @@ const XoGamePlayerView = ({openView}) => {
     const [beState, setBeState] = useState(null)
     const prevBeState = usePrevious(beState)
 
+    const [discardDialogOpened, setDiscardDialogOpened] = useState(false)
+
     const PLAY_FIELD_SIZE_PER_CELL_MIN = 20
     const PLAY_FIELD_SIZE_PER_CELL_MAX = 300
     const [playFieldSizePerCell, setPlayFieldSizePerCell] = useStateFromLocalStorageNumber({
@@ -112,8 +114,14 @@ const XoGamePlayerView = ({openView}) => {
                     ? RE.Typography({},'Passcode: ' + beState.passcode)
                     : null,
                 beState.currentUserIsGameOwner
-                    ? RE.Button({variant:"contained", onClick: () => backend.send('startGame')}, "Start game")
-                    : null,
+                    ? RE.Fragment({},
+                        RE.Button({variant:"contained", color:'primary', onClick: () => backend.send('startGame')}, "Start game"),
+                        RE.Button(
+                            {variant:"contained", color:'secondary', onClick: () => setDiscardDialogOpened(true), style:{marginLeft:'10px'}},
+                            "Discard"
+                        ),
+                    ) : null,
+                discardDialogOpened?renderDiscardDialog():null,
             )
         } else if (beState.phase == "IN_PROGRESS") {
             return RE.Typography({variant:"h6"},
@@ -121,10 +129,10 @@ const XoGamePlayerView = ({openView}) => {
                     ? RE.Fragment({}, "Your turn ", symbolToImg(getCurrentPlayer().symbol))
                     : (`Waiting for your opponent${beState.players.length>2?'s':''} to respond.`)
             )
-        } else if (beState.phase == "FINISHED") {
+        } else if (beState.phase == "FINISHED" || beState.phase == "DISCARDED") {
             return RE.Container.col.top.center({},{},
-                RE.Typography({variant:"h4"},"Game over"),
-                RE.Typography({variant:"h5"}, renderWinnerInfo()),
+                RE.Typography({variant:"h4"},beState.phase == "DISCARDED" ? "This game was discarded" : "Game over"),
+                beState.phase == "FINISHED" ? RE.Typography({variant:"h5"}, renderWinnerInfo()) : null,
                 RE.Button({onClick: goToGameSelector,}, RE.Icon({fontSize:"large"}, 'home'))
             )
         }
@@ -260,6 +268,11 @@ const XoGamePlayerView = ({openView}) => {
         }
     }
 
+    function discardGame() {
+        backend.send("discard")
+        setDiscardDialogOpened(false)
+    }
+
     function renderPasscodeDialog() {
         const tdStyle = {padding:'10px'}
         const inputElemsWidth = '200px';
@@ -330,6 +343,26 @@ const XoGamePlayerView = ({openView}) => {
             RE.DialogActions({},
                 RE.Button({color:'primary', onClick: () => setPlayerNameDialogOpened(false) }, 'Cancel'),
                 RE.Button({variant:"contained", color:'primary', onClick: sendPlayerName}, 'Save'),
+            ),
+        )
+    }
+
+    function renderDiscardDialog() {
+        const tdStyle = {padding:'10px'}
+        return RE.Dialog({open: true},
+            RE.DialogTitle({}, 'Discard this game'),
+            RE.DialogContent({dividers:true},
+                RE.table({},
+                    RE.tbody({},
+                        RE.tr({},
+                            RE.td({style: tdStyle}, 'Are you sure you want to discard this game?')
+                        )
+                    )
+                )
+            ),
+            RE.DialogActions({},
+                RE.Button({color:'primary', onClick: () => setDiscardDialogOpened(false) }, 'Cancel'),
+                RE.Button({variant:"contained", color:'secondary', onClick: discardGame}, 'Discard'),
             ),
         )
     }
