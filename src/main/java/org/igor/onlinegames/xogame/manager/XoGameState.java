@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
@@ -50,6 +51,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -84,6 +86,7 @@ public class XoGameState extends State implements GameState {
     private XoGamePhase phase = XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
     private UUID gameOwnerUserId;
     private List<XoPlayer> players;
+    private Map<UUID,XoPlayer> userIdToPlayer;
     private int fieldSize;
     private int goal;
     private String timerStr;
@@ -100,8 +103,6 @@ public class XoGameState extends State implements GameState {
     private final static DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd");
     private final static DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd__HH_mm_ss");
 
-    // TODO: 30.08.2020 show games in progress
-    // TODO: 30.08.2020 add 'draw' button
     // TODO: 30.08.2020 add 'home' button to player view
     // TODO: 30.08.2020 a better indicator of your move
 
@@ -146,7 +147,7 @@ public class XoGameState extends State implements GameState {
                     return false;
                 }
             }
-        } else if (userIdsEverConnected.contains(extractUserIdFromSession(session)) && super.bind(session, bindParams)) {
+        } else if (super.bind(session, bindParams)) {
             broadcastGameState();
             return true;
         } else {
@@ -224,6 +225,10 @@ public class XoGameState extends State implements GameState {
                         getPlayerNameFromSession(randomUserId)
                 ));
             }
+            userIdToPlayer = players.stream().collect(Collectors.toMap(
+                    XoPlayer::getUserId,
+                    Function.identity()
+            ));
             playerToMove = players.get(0);
             phase = XoGamePhase.IN_PROGRESS;
             if (timerSeconds != null) {
@@ -323,6 +328,15 @@ public class XoGameState extends State implements GameState {
             } else {
                 return true;
             }
+        }
+    }
+
+    private XoPlayer sessionToPlayer(WebSocketSession session) {
+        UUID userId = extractUserIdFromSession(session);
+        if (userIdToPlayer == null || !userIdToPlayer.containsKey(userId)) {
+            return sessionToMinimalPlayer(session);
+        } else {
+            return userIdToPlayer.get(userId);
         }
     }
 
@@ -505,6 +519,9 @@ public class XoGameState extends State implements GameState {
 
     @SneakyThrows
     private void saveHistory() {
+        history.getPlayers().stream()
+                .filter(player -> player.getPlayerName() == null)
+                .forEach(player -> player.setPlayerName("Incognito"));
         final File file = new File(getGameHistoryFilePath(historyPath, history.getStartedAt(), history.getGameId()));
         file.getParentFile().mkdirs();
         try (final FileWriter fileWriter = new FileWriter(file)) {
@@ -517,11 +534,7 @@ public class XoGameState extends State implements GameState {
     }
 
     private void broadcastGameState() {
-        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN || phase == XoGamePhase.DISCARDED) {
-            sessions.forEach(session -> sendMessageToFe(session, createViewOfCurrentState(sessionToMinimalPlayer(session))));
-        } else {
-            players.forEach(player -> player.sendMessageToFe(createViewOfCurrentState(player)));
-        }
+        sessions.forEach(session -> sendMessageToFe(session, createViewOfCurrentState(sessionToPlayer(session))));
     }
 
     private List<XoPlayerDto> createPlayersDto(XoPlayer viewer, List<XoPlayer> players) {
@@ -711,6 +724,11 @@ public class XoGameState extends State implements GameState {
     @Override
     public boolean isWaitingForPlayersToJoin() {
         return phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
+    }
+
+    @Override
+    public boolean isInProgress() {
+        return phase == XoGamePhase.IN_PROGRESS;
     }
 
     @Override

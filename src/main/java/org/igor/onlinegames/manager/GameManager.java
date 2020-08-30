@@ -131,8 +131,17 @@ public class GameManager {
 
     @RpcMethod
     public List<GameInfoDto> listNewGames() {
+        return listGames(true);
+    }
+
+    @RpcMethod
+    public List<GameInfoDto> listInProgressGames() {
+        return listGames(false);
+    }
+
+    private List<GameInfoDto> listGames(boolean waitingPlayersToJoin) {
         return stateManager.getStates().entrySet().stream()
-                .filter(entry -> isGameToList(entry.getValue()))
+                .filter(entry -> isGameToList(entry.getValue(), waitingPlayersToJoin))
                 .sorted(Comparator.comparing(entry -> entry.getValue().getCreatedAt()))
                 .map(entry -> {
                     GameState gameState = (GameState) entry.getValue();
@@ -144,12 +153,18 @@ public class GameManager {
                             .shortDescription(gameState.getShortDescription())
                             .hasPasscode(gameState.hasPasscode())
                             .currUserIsOwner(gameState.isOwner(user.getUserData()))
+                            .inProgress(gameState.isInProgress())
                             .build();
                 }).collect(Collectors.toList());
     }
 
-    private boolean isGameToList(State state) {
-        return state instanceof GameState && ((GameState) state).isWaitingForPlayersToJoin();
+    private boolean isGameToList(State state, boolean waitingPlayersToJoin) {
+        if (!(state instanceof GameState)) {
+            return false;
+        }
+        final GameState gameState = (GameState) state;
+        return waitingPlayersToJoin && gameState.isWaitingForPlayersToJoin()
+                || !waitingPlayersToJoin && gameState.isInProgress();
     }
 
     @SneakyThrows

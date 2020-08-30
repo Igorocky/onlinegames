@@ -2,7 +2,10 @@
 
 const GameSelector = ({openView}) => {
 
-    const [availableNewGames, setAvailableNewGames] = useState(null)
+    const LIST_NEW_GAMES = 'listNewGames';
+    const LIST_IN_PROGRESS_GAMES = 'listInProgressGames';
+    const loadGamesMethodName = useRef(LIST_NEW_GAMES)
+    const [availableGames, setAvailableGames] = useState(null)
     const timerHandle = useRef(null)
     const [history, setHistory] = useState(null)
 
@@ -11,18 +14,24 @@ const GameSelector = ({openView}) => {
     const [openedDialog, setOpenedDialog] = useState(null)
 
     useEffect(() => {
-        loadListOfAvailableNewGames()
+        loadListOfAvailableGames()
         return () => {
-            if (timerHandle.current) {
-                window.clearTimeout(timerHandle.current)
-            }
+            stopLoadingAvailableGames()
         }
     }, [])
 
-    function loadListOfAvailableNewGames() {
-        doRpcCall('listNewGames', {}, listOfGames => {
-            setAvailableNewGames(listOfGames)
-            timerHandle.current = window.setTimeout(loadListOfAvailableNewGames, 5000)
+    function stopLoadingAvailableGames() {
+        if (timerHandle.current) {
+            window.clearTimeout(timerHandle.current)
+        }
+    }
+
+    function loadListOfAvailableGames(dontSetTimer) {
+        doRpcCall(loadGamesMethodName.current, {}, listOfGames => {
+            setAvailableGames(listOfGames)
+            if (!dontSetTimer) {
+                timerHandle.current = window.setTimeout(loadListOfAvailableGames, 5000)
+            }
         })
     }
 
@@ -36,7 +45,11 @@ const GameSelector = ({openView}) => {
         return {
             "play": {
                 label: "Play",
-                render: renderAllGames
+                render: renderNewGames
+            },
+            "view": {
+                label: "View",
+                render: renderInProgressGames
             },
             "archive": {
                 label: "Archive",
@@ -49,6 +62,14 @@ const GameSelector = ({openView}) => {
         if ("archive" === newTabKey) {
             setHistory(null)
             loadHistory()
+        } else if ("play" === newTabKey) {
+            setAvailableGames(null)
+            loadGamesMethodName.current = LIST_NEW_GAMES
+            loadListOfAvailableGames(true)
+        } else if ("view" === newTabKey) {
+            setAvailableGames(null)
+            loadGamesMethodName.current = LIST_IN_PROGRESS_GAMES
+            loadListOfAvailableGames(true)
         }
     }
 
@@ -64,10 +85,10 @@ const GameSelector = ({openView}) => {
         }
     }
 
-    function renderTableWithAvailableNewGames() {
-        if (availableNewGames) {
-            if (availableNewGames.length == 0) {
-                return 'No new games were created.'
+    function renderTableWithAvailableGames() {
+        if (availableGames) {
+            if (availableGames.length == 0) {
+                return 'No games to show.'
             } else {
                 return RE.Paper({},
                     RE.Table({},
@@ -81,7 +102,7 @@ const GameSelector = ({openView}) => {
                             )
                         ),
                         RE.TableBody({},
-                            availableNewGames.map(gameDto => RE.TableRow({key:gameDto.gameId},
+                            availableGames.map(gameDto => RE.TableRow({key:gameDto.gameId},
                                 RE.TableCell({}, gameDto.gameDisplayType),
                                 RE.TableCell({}, gameDto.title),
                                 RE.TableCell({}, gameDto.shortDescription),
@@ -91,7 +112,7 @@ const GameSelector = ({openView}) => {
                                         ...(gameDto.currUserIsOwner?({variant:"contained", color:"primary"}):{}),
                                         onClick: () => joinGame(gameDto.gameType, gameDto.gameId)
                                     },
-                                    "Join"
+                                    gameDto.inProgress?"View":"Join"
                                 )),
                             ))
                         )
@@ -106,7 +127,7 @@ const GameSelector = ({openView}) => {
     function renderTableWithHistory() {
         if (history) {
             if (history.length == 0) {
-                return 'Nothing to show.'
+                return 'No previous games found.'
             } else {
                 return RE.Paper({},
                     RE.Table({},
@@ -158,17 +179,23 @@ const GameSelector = ({openView}) => {
         )
     }
 
-    function renderAllGames() {
+    function renderNewGames() {
         return RE.Container.col.top.left({},{},
             renderButtonList(),
-            renderTableWithAvailableNewGames(),
+            renderTableWithAvailableGames(),
             openedDialog ? re(openedDialog, {openView, onCancel: () => setOpenedDialog(null)}) : null,
+        )
+    }
+
+    function renderInProgressGames() {
+        return RE.Container.col.top.left({},{},
+            renderTableWithAvailableGames()
         )
     }
 
     function renderHistory() {
         return RE.Container.col.top.left({},{},
-            history?.length?RE.span({style:{color:'red'}}, 'This history of games may be erased at any moment...'):null,
+            history?.length?RE.span({style:{color:'red'}}, 'This history of games may have been erased at any moment...'):null,
             renderTableWithHistory()
         )
     }

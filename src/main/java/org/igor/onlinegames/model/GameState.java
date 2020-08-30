@@ -2,6 +2,7 @@ package org.igor.onlinegames.model;
 
 public interface GameState {
     boolean isWaitingForPlayersToJoin();
+    boolean isInProgress();
     String gameType();
     String gameDisplayType();
     String getTitle();
