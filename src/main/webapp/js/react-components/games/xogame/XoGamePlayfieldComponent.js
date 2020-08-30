@@ -34,6 +34,20 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
         }
     }
 
+    function getColorForSymbol(symbol) {
+        if (symbol === 'x') {
+            return 'dodgerblue'
+        } else if (symbol === 'o') {
+            return 'sandybrown'
+        } else if (symbol === 's') {
+            return 'lightcoral'
+        } else if (symbol === 't') {
+            return 'mediumaquamarine'
+        } else if (symbol === 'a') {
+            return 'orchid'
+        }
+    }
+
     /**
      * @param {Vector} centerEx
      * @param {number} cellSize
@@ -42,6 +56,7 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
         const key = `cell-symbol-${centerEx.start.x}-${centerEx.start.y}`
         const cellAbsoluteSize = centerEx.length() * cellSize
         const strokeWidth = cellAbsoluteSize * 0.15
+        const symbolColor = getColorForSymbol(symbol)
         if (symbol === 'x') {
             const xStrokeWidth = cellAbsoluteSize * 0.30
             return [
@@ -52,10 +67,9 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
             ]
                 .map(vec => vec.scale(cellSize*0.25))
                 .map((vec, idx) => vec.toSvgLine({
-                    key: key + '-' + idx, stroke: 'dodgerblue', strokeWidth:xStrokeWidth, strokeLinecap: 'round'
+                    key: key + '-' + idx, stroke: symbolColor, strokeWidth:xStrokeWidth, strokeLinecap: 'round'
                 }))
         } else if (symbol === 'o') {
-            const symbolColor = 'sandybrown'
             return [
                 svgCircle({
                     key,
@@ -66,7 +80,6 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
             ]
         } else if (symbol === 's') {
             const baseVector = centerEx.rotate(45).scale(cellSize*0.37)
-            const symbolColor = 'lightcoral'
             return [
                 svgPolygon({
                     key,
@@ -76,7 +89,6 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
             ]
         } else if (symbol === 't') {
             const baseVector = centerEx.rotate(90).translate(null, -cellSize*0.07).scale(cellSize*0.34)
-            const symbolColor = 'mediumaquamarine'
             return [
                 svgPolygon({
                     key,
@@ -87,7 +99,6 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
         } else if (symbol === 'a') {
             const baseVector1 = centerEx.rotate(90).scale(cellSize*0.3)
             const baseVector2 = centerEx.rotate(90+36).scale(cellSize*0.15)
-            const symbolColor = 'orchid'
             return [
                 svgPolygon({
                     key,
@@ -213,7 +224,7 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
     }
 
     function renderLineOfFrame({ex, margin, symbol, cellSize, amount}) {
-        let ex2 = ex.translate(ex.rotate(180), margin/2).scale(margin/cellSize)
+        let ex2 = ex.translate(ex.rotate(180), margin/2).scale(margin/cellSize*1.2)
         const shift = ex.rotate(90).scale(cellSize)
 
         const result = []
@@ -228,16 +239,38 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
         return result
     }
 
+    function renderLine2OfFrame({ex, margin, symbol, cellSize, fieldSize}) {
+        const exNeg = ex.rotate(180).scale(margin);
+        const v1 = ex
+        const v2 = ex.rotate(90).scale(cellSize * fieldSize)
+        const v3 = v2.add(exNeg)
+        const v4 = exNeg
+        const points = [v1.start, v2.end, v3.end, v4.end];
+        return [
+            svgPolygon({
+                key: 'frame-polygon1-' + ex.start.x + "-" + ex.start.y,
+                points,
+                props: {fill: getColorForSymbol(symbol), strokeWidth: 0, opacity: 0.6}
+            })
+        ]
+    }
+
     function renderFrame({ex, boundaries, margin, symbol, cellSize, fieldSize}) {
         const amount = 1
-        return [
+        const baseExArr = [
             ex.translateTo(new Point(boundaries.minX, boundaries.maxY)),
             ex.rotate(90).translateTo(new Point(boundaries.maxX, boundaries.maxY)),
             ex.rotate(180).translateTo(new Point(boundaries.maxX, boundaries.minY)),
             ex.rotate(270).translateTo(new Point(boundaries.minX, boundaries.minY))
         ]
-            .map(ex => ex.translate(ex.rotate(-90), margin/2.2))
-            .flatMap(ex => renderLineOfFrame({ex, margin, symbol, cellSize, amount}))
+        return [
+            ...baseExArr
+                .map(ex => ex.translate(ex.rotate(-90), margin / 2.2))
+                .flatMap(ex => renderLineOfFrame({ex, margin, symbol, cellSize, amount})),
+            ...baseExArr
+                .flatMap(ex => renderLine2OfFrame({ex, margin, symbol, cellSize, fieldSize})),
+
+        ]
     }
 
     function renderSvgField() {
@@ -261,7 +294,6 @@ const XoGamePlayfieldComponent = ({size, fieldSize, tableData, onCellClicked, fr
             ...grid.svgElems,
             ...renderCells({ex, cellSize, tableData}),
             frameSymbol?renderFrame({ex, boundaries: grid.boundaries, margin, symbol:frameSymbol, cellSize, fieldSize}):null,
-            !frameSymbol?SVG.rect({key:'foreground', x:-1000, y:-1000, width:2000, height:2000, fill:'black', opacity:0.1}):null,
         )
     }
 

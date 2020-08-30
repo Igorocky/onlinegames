@@ -103,9 +103,6 @@ public class XoGameState extends State implements GameState {
     private final static DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd");
     private final static DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd__HH_mm_ss");
 
-    // TODO: 30.08.2020 add 'home' button to player view
-    // TODO: 30.08.2020 a better indicator of your move
-
     @Override
     protected void init(JsonNode args) {
         fieldSize = args.get(FIELD_SIZE).asInt();

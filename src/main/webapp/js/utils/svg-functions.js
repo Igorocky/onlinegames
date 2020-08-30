@@ -157,6 +157,15 @@ class Vector {
         )
     }
 
+    add(anotherVector) {
+        return new Vector(
+            this.start,
+            this.end.add(
+                anotherVector.end.minus(anotherVector.start)
+            )
+        )
+    }
+
     /**
      * @return {SvgBoundaries} SvgBoundaries
      */
