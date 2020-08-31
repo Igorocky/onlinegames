@@ -124,11 +124,15 @@ const XoGamePlayerView = ({openView}) => {
                 discardDialogOpened?renderDiscardDialog():null,
             )
         } else if (beState.phase == "IN_PROGRESS") {
-            return RE.Typography({variant:"h6"},
-                beState.playerIdToMove == beState.currentPlayerId
-                    ? RE.Fragment({}, "Your turn ", symbolToImg(getCurrentPlayer().symbol))
-                    : (`Waiting for your opponent${beState.players.length>2?'s':''} to respond.`)
-            )
+            let title
+            if (!hasValue(beState.currentPlayerId)) {
+                title = RE.Fragment({}, "You are viewing this game.")
+            } else if (beState.playerIdToMove == beState.currentPlayerId) {
+                title = RE.Fragment({}, "Your turn ", symbolToImg(getCurrentPlayer().symbol))
+            } else {
+                title = `Waiting for your opponent${beState.players.length>2?'s':''} to respond.`
+            }
+            return RE.Typography({variant:"h6"}, title)
         } else if (beState.phase == "FINISHED" || beState.phase == "DISCARDED") {
             return RE.Container.col.top.center({},{},
                 RE.Typography({variant:"h4"},beState.phase == "DISCARDED" ? "This game was discarded" : "Game over"),
