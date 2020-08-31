@@ -67,6 +67,8 @@ public class XoGameState extends State implements GameState {
     private String historyPath;
     @Autowired
     private ObjectMapper mapper;
+    @Autowired
+    private XoGamePlayersCounts xoGamePlayersCounts;
 
     private static final String PLAYER_STATE = "playerState";
     private static final List<Character> POSSIBLE_SYMBOLS = listOf('x','o','s','t','a');
@@ -197,12 +199,11 @@ public class XoGameState extends State implements GameState {
         if (phase != XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
             return;
         }
-        final UUID userId = extractUserIdFromSession(session);
-        if (!userId.equals(gameOwnerUserId)) {
+        if (!extractUserIdFromSession(session).equals(gameOwnerUserId)) {
             sendMessageToFe(session, new XoGameErrorDto("You don't have permissions to start game."));
         } else {
             players = new ArrayList<>();
-            final List<UUID> userIds = new ArrayList<>(
+            List<UUID> userIds = new ArrayList<>(
                     sessions.stream()
                             .map(this::extractUserIdFromSession)
                             .filter(id -> !gameOwnerUserId.equals(id))
@@ -211,15 +212,14 @@ public class XoGameState extends State implements GameState {
                             .collect(Collectors.toList())
             );
             userIds.add(gameOwnerUserId);
+            userIds = xoGamePlayersCounts.getAndUpdateOrderOfPlayers(userIds);
             List<Character> possibleSymbols = new ArrayList<>(POSSIBLE_SYMBOLS);
-            final Random rnd = new Random();
-            while (!userIds.isEmpty()) {
-                final UUID randomUserId = userIds.remove(rnd.nextInt(userIds.size()));
+            for (UUID userId : userIds) {
                 players.add(createPlayer(
-                        randomUserId,
+                        userId,
                         players.size(),
                         possibleSymbols.remove(0),
-                        getPlayerNameFromSession(randomUserId)
+                        getPlayerNameFromSession(userId)
                 ));
             }
             userIdToPlayer = players.stream().collect(Collectors.toMap(
