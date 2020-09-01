@@ -32,9 +32,11 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -42,7 +44,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -63,13 +64,6 @@ import static org.igor.onlinegames.common.OnlinegamesUtils.nullSafeGetter;
 @Scope("prototype")
 public class XoGameState extends State implements GameState {
 
-    @Value("${app.xogame.history-path}")
-    private String historyPath;
-    @Autowired
-    private ObjectMapper mapper;
-    @Autowired
-    private XoGamePlayersCounts xoGamePlayersCounts;
-
     private static final String PLAYER_STATE = "playerState";
     private static final List<Character> POSSIBLE_SYMBOLS = listOf('x','o','s','t','a');
     public static final int MAX_NUMBER_OF_PLAYERS = POSSIBLE_SYMBOLS.size();
@@ -81,6 +75,15 @@ public class XoGameState extends State implements GameState {
     private static final Pattern TIMER_VALUE_PATTERN_1 = Pattern.compile("^(\\d+)([sm])$");
     private static final Pattern TIMER_VALUE_PATTERN_2 = Pattern.compile("^(\\d+)m(\\d+)s$");
     private static final String PLAYER_NAME = "PLAYER_NAME";
+    private static final Duration INACTIVITY_INTERVAL = Duration.of(10, ChronoUnit.MINUTES);
+
+    @Value("${app.xogame.history-path}")
+    private String historyPath;
+    @Autowired
+    private ObjectMapper mapper;
+    @Autowired
+    private XoGamePlayersCounts xoGamePlayersCounts;
+    private Instant lastActionAt = Instant.now();
 
     private String title;
     private String passcode;
@@ -458,6 +461,7 @@ public class XoGameState extends State implements GameState {
             } else if (field[x][y] != null) {
                 player.sendMessageToFe(new XoGameErrorDto("The cell you clicked is not empty."));
             } else {
+                lastActionAt = Instant.now();
                 if (timerHandle != null) {
                     timerHandle.cancel(true);
                     timerHandle = null;
@@ -499,6 +503,7 @@ public class XoGameState extends State implements GameState {
             }
             if (phase == XoGamePhase.FINISHED) {
                 shutdownTimer();
+                history.setFinishedAt(Instant.now());
                 saveHistory();
             }
         }
@@ -693,7 +698,7 @@ public class XoGameState extends State implements GameState {
         playerToMove = getNextPlayerToMove();
     }
 
-    private void shutdownTimer() {
+    private synchronized void shutdownTimer() {
         if (timerHandle != null) {
             timerHandle.cancel(true);
             timerHandle = null;
@@ -756,5 +761,16 @@ public class XoGameState extends State implements GameState {
     @Override
     public boolean isOwner(UserSessionData userData) {
         return userData.getUserId().equals(gameOwnerUserId);
+    }
+
+    @Override
+    public boolean mayBeRemoved() {
+        return Duration.between(lastActionAt, Instant.now()).compareTo(INACTIVITY_INTERVAL) > 0;
+    }
+
+    @Override
+    public void preDestroy() {
+        unbindAndCloseAllWebSockets();
+        shutdownTimer();
     }
 }

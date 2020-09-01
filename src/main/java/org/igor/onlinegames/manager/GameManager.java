@@ -30,7 +30,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -41,8 +40,7 @@ import java.util.stream.Stream;
 @Component
 @Slf4j
 public class GameManager {
-    private static final Duration ONE_HOUR = Duration.of(1, ChronoUnit.HOURS);
-    private static final Duration ONE_DAYS = Duration.of(24, ChronoUnit.HOURS);
+    private static final Duration ONE_DAY = Duration.of(24, ChronoUnit.HOURS);
 
     @Value("${app.xogame.history-path}")
     private String historyPath;
@@ -63,24 +61,23 @@ public class GameManager {
         scheduledExecutorService.scheduleAtFixedRate(
                 () -> {
                     try {
-                        final Instant currTime = Instant.now();
-                        final List<Map.Entry<UUID, State>> statesToRemove = stateManager.getStates().entrySet().stream()
+                        stateManager.getStates().entrySet().stream()
                                 .filter(entry -> {
                                     final State state = entry.getValue();
-                                    return state instanceof GameState
-                                            && Duration.between(state.getLastOutMsgAt(), currTime).compareTo(ONE_HOUR) > 0;
+                                    return state instanceof GameState && ((GameState) state).mayBeRemoved();
                                 })
-                                .collect(Collectors.toList());
-                        statesToRemove.stream()
-                                .map(Map.Entry::getKey)
-                                .forEach(stateManager::removeBackendState);
+                                .forEach(entry -> {
+                                    final GameState state = (GameState) entry.getValue();
+                                    state.preDestroy();
+                                    stateManager.removeBackendState(entry.getKey());
+                                });
                     } catch (Exception ex) {
                         log.error(ex.getMessage(), ex);
                     }
                 },
                 0,
-                1,
-                TimeUnit.HOURS
+                5,
+                TimeUnit.MINUTES
         );
     }
 
@@ -88,7 +85,7 @@ public class GameManager {
     public List<XoGameRecordSummaryDto> getHistory() {
         final UUID userId = user.getUserData().getUserId();
         final Instant currTime = Instant.now();
-        return Stream.of(currTime, currTime.minus(ONE_DAYS))
+        return Stream.of(currTime, currTime.minus(ONE_DAY))
                 .map(inst -> XoGameState.getGameHistoryDirPath(historyPath, inst))
                 .map(Paths::get)
                 .filter(path -> path.toFile().exists())

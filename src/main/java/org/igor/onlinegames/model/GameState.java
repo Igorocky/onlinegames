@@ -9,4 +9,6 @@ public interface GameState {
     boolean hasPasscode();
     String getShortDescription();
     boolean isOwner(UserSessionData userData);
+    boolean mayBeRemoved();
+    void preDestroy();
 }
