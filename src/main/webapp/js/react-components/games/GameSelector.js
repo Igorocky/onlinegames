@@ -48,7 +48,7 @@ const GameSelector = ({openView}) => {
                 render: renderNewGames
             },
             "view": {
-                label: "View",
+                label: "Watch",
                 render: renderInProgressGames
             },
             "archive": {
@@ -112,7 +112,7 @@ const GameSelector = ({openView}) => {
                                         ...(gameDto.currUserIsOwner?({variant:"contained", color:"primary"}):{}),
                                         onClick: () => joinGame(gameDto.gameType, gameDto.gameId)
                                     },
-                                    gameDto.inProgress?"View":"Join"
+                                    gameDto.inProgress?"Watch":"Join"
                                 )),
                             ))
                         )
