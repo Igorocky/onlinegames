@@ -126,7 +126,7 @@ const XoGamePlayerView = ({openView}) => {
         } else if (beState.phase == "IN_PROGRESS") {
             let title
             if (!hasValue(beState.currentPlayerId)) {
-                title = RE.Fragment({}, "You are viewing this game.")
+                title = RE.Fragment({}, "You are watching this game.")
             } else if (beState.playerIdToMove == beState.currentPlayerId) {
                 title = RE.Fragment({}, "Your turn ", symbolToImg(getCurrentPlayer().symbol))
             } else {
