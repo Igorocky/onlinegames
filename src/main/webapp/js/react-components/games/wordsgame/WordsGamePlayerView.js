@@ -29,6 +29,7 @@ const WordsGamePlayerView = ({openView}) => {
         key: WORDS_GAME_SOUNDS_ENABLED,
         defaultValue: true
     })
+    const [highlightActiveWords, setHighlightActiveWords] = useState(false)
 
     useEffect(() => {
         if (!hasValue(prevBeState) && hasValue(beState)) {
@@ -145,7 +146,60 @@ const WordsGamePlayerView = ({openView}) => {
     }
 
     function renderField() {
-        return "Field: TBD"
+        return RE.Container.col.top.left({},{style:{marginBottom:"20px"}},
+            renderFieldButtons(),
+            renderText()
+        )
+    }
+
+    function renderFieldButtons() {
+        return RE.ButtonGroup({variant:"contained", size:"small"},
+            RE.Button({
+                    style:{},
+                    onClick: () => setHighlightActiveWords(old => !old),
+                },
+                RE.Icon({fontSize:"large"}, 'zoom_in')
+            ),
+            RE.Button({
+                    style:{},
+                    onClick: () => setSoundsEnabled(!soundsEnabled),
+                },
+                soundsEnabled?RE.Icon({fontSize:"large"}, 'volume_up'):RE.Icon({fontSize:"large"}, 'volume_off')
+            ),
+            RE.Button({
+                    style:{},
+                    onClick: () => {
+                        setNewPlayerName(playerName)
+                        setPlayerNameDialogOpened(true)
+                    },
+                },
+                RE.Icon({fontSize:"large"}, 'account_box')
+            ),
+            RE.Button({
+                    style:{},
+                    onClick: goToGameSelector,
+                },
+                RE.Icon({fontSize:"large"}, 'home')
+            )
+        )
+    }
+
+    function renderText() {
+        if (beState.words) {
+            return RE.Container.col.top.left({}, {style:{marginBottom:"20px"}},
+                beState.words.map((p, pi) => RE.Typography({key:pi, variant:"h5"},
+                    p.map((w, wi) => RE.span(
+                        {
+                            key: wi,
+                            style: {backgroundColor: (highlightActiveWords && w.active) ? "yellow" : ""}
+                        },
+                        w.value
+                    ))
+                ))
+            )
+        } else {
+            return null
+        }
     }
 
     function sendPasscode() {

@@ -3,6 +3,7 @@ package org.igor.onlinegames.wordsgame.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import lombok.Data;
+import org.igor.onlinegames.wordsgame.manager.TextToken;
 
 import java.util.List;
 
@@ -17,9 +18,10 @@ public class WordsGameStateDto implements WordsGameDto {
     private List<String> namesOfWaitingPlayers;
     private boolean currentUserIsGameOwner;
     private String currentPlayerName;
-    private String wordsToLearnStr;
     private Integer timerSeconds;
     private List<WordsPlayerDto> players;
     private Integer currentPlayerId;
     private Integer playerIdToMove;
+    private String textToLearn;
+    private List<List<TextToken>> words;
 }

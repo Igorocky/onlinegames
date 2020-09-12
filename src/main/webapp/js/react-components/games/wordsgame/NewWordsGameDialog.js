@@ -4,7 +4,7 @@ const WORDS_GAME_PLAYER_NAME_KEY = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX
 const WORDS_GAME_TIMER_KEY = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'timer'
 const WORDS_GAME_TITLE_KEY = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'title'
 const WORDS_GAME_PASSCODE_KEY = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'passcode'
-const WORDS_GAME_WORDS_TO_LEARN_KEY = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'wordsToLearn'
+const WORDS_GAME_TEXT_TO_LEARN_KEY = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'textToLearn'
 
 const NewWordsGameDialog = ({openView, onCancel}) => {
 
@@ -24,15 +24,15 @@ const NewWordsGameDialog = ({openView, onCancel}) => {
         key: WORDS_GAME_PASSCODE_KEY,
         defaultValue: ''
     })
-    const [wordsToLearn, setWordsToLearn] = useStateFromLocalStorageString({
-        key: WORDS_GAME_WORDS_TO_LEARN_KEY,
+    const [textToLearn, setTextToLearn] = useStateFromLocalStorageString({
+        key: WORDS_GAME_TEXT_TO_LEARN_KEY,
         defaultValue: ''
     })
 
     function createNewWordsGame() {
         doRpcCall(
             "createNewBackendState",
-            {stateType: "WordsGame", initParams: {title, playerName, passcode, timer, wordsToLearn}},
+            {stateType: "WordsGame", initParams: {title, playerName, passcode, timer, textToLearn}},
             gameId => {
                 openView(VIEW_URLS.wordsGame({gameId}))
             }
@@ -105,8 +105,8 @@ const NewWordsGameDialog = ({openView, onCancel}) => {
                                 {
                                     variant: 'outlined', label: 'Text', multiline: true, rowsMax: 10,
                                     style: {width: inputElemsWidth},
-                                    onChange: event => setWordsToLearn(event.target.value),
-                                    value: wordsToLearn
+                                    onChange: event => setTextToLearn(event.target.value),
+                                    value: textToLearn
                                 }
                             )
                         )

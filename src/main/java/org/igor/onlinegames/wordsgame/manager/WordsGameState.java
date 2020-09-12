@@ -61,7 +61,7 @@ public class WordsGameState extends State implements GameState {
     public static final int MAX_NUMBER_OF_PLAYERS = 10;
     private static final String TITLE = "title";
     private static final String PASSCODE = "passcode";
-    private static final String WORDS_TO_LEARN = "wordsToLearn";
+    private static final String TEXT_TO_LEARN = "textToLearn";
     private static final String TIMER = "timer";
     private static final Pattern TIMER_VALUE_PATTERN_1 = Pattern.compile("^(\\d+)([sm])$");
     private static final Pattern TIMER_VALUE_PATTERN_2 = Pattern.compile("^(\\d+)m(\\d+)s$");
@@ -79,7 +79,6 @@ public class WordsGameState extends State implements GameState {
 
     private String title;
     private String passcode;
-    private String wordsToLearnStr;
     private Set<UUID> userIdsEverConnected = new HashSet<>();
     private WordsGamePhase phase = WAITING_FOR_PLAYERS_TO_JOIN;
     private UUID gameOwnerUserId;
@@ -90,13 +89,16 @@ public class WordsGameState extends State implements GameState {
     private ScheduledExecutorService scheduledExecutorService;
     private ScheduledFuture<?> timerHandle;
     private WordsPlayer playerToMove;
+    private String textToLearn;
+    private List<List<TextToken>> words;
 
     @Override
     protected void init(JsonNode args) {
-        wordsToLearnStr = getNonEmptyTextFromParams(args, WORDS_TO_LEARN);
-        if (StringUtils.isEmpty(wordsToLearnStr)) {
+        textToLearn = getNonEmptyTextFromParams(args, TEXT_TO_LEARN);
+        if (StringUtils.isEmpty(textToLearn)) {
             throw new OnlinegamesException("StringUtils.isEmpty(wordsToLearnStr)");
         }
+        words = TextProcessing.splitOnParagraphs(textToLearn, null);
         timerStr = getNonEmptyTextFromParams(args, TIMER);
         timerSeconds = parseTimerValue(timerStr);
         title = getNonEmptyTextFromParams(args, TITLE);
@@ -375,18 +377,20 @@ public class WordsGameState extends State implements GameState {
                     .namesOfWaitingPlayers(getConnectedPlayerNames(null))
                     .currentPlayerName(player.getName())
                     .currentUserIsGameOwner(player.isGameOwner())
-                    .wordsToLearnStr(wordsToLearnStr)
                     .timerSeconds(getRemainingTimerDelay())
+                    .textToLearn(textToLearn)
+                    .words(words)
                     .build();
         } else {
             return WordsGameStateDto.builder()
                     .phase(phase)
                     .currentUserIsGameOwner(player.isGameOwner())
-                    .wordsToLearnStr(wordsToLearnStr)
                     .timerSeconds(getRemainingTimerDelay())
                     .currentPlayerId(player.getPlayerId())
                     .players(createPlayersDto(player, players))
                     .playerIdToMove(nullSafeGetter(playerToMove, WordsPlayer::getPlayerId))
+                    .textToLearn(textToLearn)
+                    .words(words)
                     .build();
         }
     }
@@ -536,7 +540,7 @@ public class WordsGameState extends State implements GameState {
 
     @Override
     public synchronized String getShortDescription() {
-        return "W " + wordsToLearnStr.length() + (timerSeconds == null ? "" : " / T " + timerSeconds);
+        return "W " + textToLearn.length() + (timerSeconds == null ? "" : " / T " + timerSeconds);
     }
 
     @Override
