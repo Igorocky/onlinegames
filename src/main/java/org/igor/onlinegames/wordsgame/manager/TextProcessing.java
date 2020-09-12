@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -25,6 +26,10 @@ public class TextProcessing {
     private static final Pattern NOT_ACTIVE_PATTERN = Pattern.compile("^[\\(\\)-.,\\s–\":\\[\\]\\\\/;!?\\u2014\\u2026\\u201E\\u201D]+$");
     private static final List<String> SENTENCE_ENDS = listOf(".", "!", "?", "…");
     private static final List<String> R_N = listOf("\r", "\n");
+
+    public static List<List<TextToken>> splitOnParagraphs(String text) {
+        return splitOnParagraphs(text, null);
+    }
 
     public static List<List<TextToken>> splitOnParagraphs(String text, String ignoreList) {
         final List<TextToken> tokens = splitOnTokens(text, ignoreList);
@@ -54,7 +59,18 @@ public class TextProcessing {
     }
 
     private static List<TextToken> splitOnTokens(String text, Set<String> substringsToIgnore) {
-        List<Object> tokensRaw = extractUnsplittable(text);
+        List<Object> tokensRaw = extractUnsplittable(Collections.singletonList(text), "[", "]", token -> {
+            if (token.getMeta() == null) {
+                token.setUnsplittable(true);
+            }
+            return token;
+        });
+        tokensRaw = extractUnsplittable(tokensRaw, "{", "}", token -> {
+            if (token.getMeta() == null) {
+                token.setIgnored(true);
+            }
+            return token;
+        });
         tokensRaw = extractPredefinedParts(tokensRaw, substringsToIgnore);
         List<TextToken> tokens = tokenize(tokensRaw);
         tokens = splitByLongestSequence(tokens, R_N);
@@ -114,7 +130,8 @@ public class TextProcessing {
         String val = token.getValue();
         if (containsOneOf(val, R_N)) {
             token.setMeta(true);
-        } else if (!(ignoreList.contains(val) || NOT_ACTIVE_PATTERN.matcher(val).matches())) {
+        } else if (!(ignoreList.contains(val) || isIgnored(token) || isMeta(token)
+                || NOT_ACTIVE_PATTERN.matcher(val).matches())) {
             token.setActive(true);
         }
     }
@@ -126,24 +143,38 @@ public class TextProcessing {
         return res;
     }
 
-    private static List<Object> extractUnsplittable(String text) {
+    private static List<Object> extractUnsplittable(String text, String prefix, String suffix,
+                                                    Function<TextToken, TextToken> mapper) {
         List<Object> res = new LinkedList<>();
         String tail = text;
-        int idxS = tail.indexOf("[[");
-        int idxE = idxS < 0 ? -1 : tail.indexOf("]]", idxS+2);
-        while (idxE >= 2) {
+        int idxS = tail.indexOf(prefix);
+        int idxE = idxS < 0 ? -1 : tail.indexOf(suffix, idxS+prefix.length());
+        while (idxE >= prefix.length()) {
             if (idxS > 0) {
                 res.add(tail.substring(0, idxS));
             }
-            res.add(TextToken.builder().value("[[").meta(true).build());
-            res.add(TextToken.builder().value(tail.substring(idxS+2, idxE)).unsplittable(true).build());
-            res.add(TextToken.builder().value("]]").meta(true).build());
-            tail = tail.substring(idxE + 2);
-            idxS = tail.indexOf("[[");
-            idxE = idxS < 0 ? -1 : tail.indexOf("]]", idxS+2);
+            res.add(mapper.apply(TextToken.builder().value(prefix).meta(true).build()));
+            res.add(mapper.apply(TextToken.builder().value(tail.substring(idxS+prefix.length(), idxE)).build()));
+            res.add(mapper.apply(TextToken.builder().value(suffix).meta(true).build()));
+            tail = tail.substring(idxE + suffix.length());
+            idxS = tail.indexOf(prefix);
+            idxE = idxS < 0 ? -1 : tail.indexOf(suffix, idxS+prefix.length());
         }
         if (!tail.isEmpty()) {
             res.add(tail);
+        }
+        return res;
+    }
+
+    private static List<Object> extractUnsplittable(List<Object> text, String prefix, String suffix,
+                                                    Function<TextToken, TextToken> mapper) {
+        List<Object> res = new LinkedList<>();
+        for (Object obj : text) {
+            if (obj instanceof TextToken) {
+                res.add(obj);
+            } else {
+                res.addAll(extractUnsplittable((String) obj, prefix, suffix, mapper));
+            }
         }
         return res;
     }
@@ -172,6 +203,14 @@ public class TextProcessing {
 
     private static boolean isEndOfParagraph(TextToken token) {
         return isSplittableBy(token, R_N);
+    }
+
+    private static boolean isIgnored(TextToken token) {
+        return token.getIgnored() != null && token.getIgnored();
+    }
+
+    private static boolean isMeta(TextToken token) {
+        return token.getMeta() != null && token.getMeta();
     }
 
     private static List<TextToken> tokenize(List<Object> text) {

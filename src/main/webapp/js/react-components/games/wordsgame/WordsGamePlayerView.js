@@ -30,6 +30,7 @@ const WordsGamePlayerView = ({openView}) => {
         defaultValue: true
     })
     const [highlightActiveWords, setHighlightActiveWords] = useState(false)
+    const [newTextToLearn, setNewTextToLearn] = useState(null)
 
     useEffect(() => {
         if (!hasValue(prevBeState) && hasValue(beState)) {
@@ -47,6 +48,8 @@ const WordsGamePlayerView = ({openView}) => {
             setPlayerName(msg.newPlayerName)
             setConflictingPlayerName(null)
             setPlayerNameDialogOpened(false)
+        } else if (msg.type == "msg:NewTextWasSaved") {
+            setNewTextToLearn(null)
         } else if (msg.type == "error:NoAvailablePlaces") {
             openView(VIEW_URLS.gameSelector)
         } else if (msg.type == "error:PasscodeRequired") {
@@ -152,6 +155,10 @@ const WordsGamePlayerView = ({openView}) => {
         )
     }
 
+    function goToEditMode() {
+        setNewTextToLearn(beState.textToLearn)
+    }
+
     function renderFieldButtons() {
         return RE.ButtonGroup({variant:"contained", size:"small"},
             RE.Button({
@@ -159,6 +166,12 @@ const WordsGamePlayerView = ({openView}) => {
                     onClick: () => setHighlightActiveWords(old => !old),
                 },
                 RE.Icon({fontSize:"large"}, 'zoom_in')
+            ),
+            RE.Button({
+                    style:{},
+                    onClick: goToEditMode,
+                },
+                RE.Icon({fontSize:"large"}, 'zoom_out')
             ),
             RE.Button({
                     style:{},
@@ -184,19 +197,40 @@ const WordsGamePlayerView = ({openView}) => {
         )
     }
 
+    function saveNewTextToLearn() {
+        backend.send("setTextToLearn", {newTextToLearn})
+    }
+
     function renderText() {
         if (beState.words) {
-            return RE.Container.col.top.left({}, {style:{marginBottom:"20px"}},
-                beState.words.map((p, pi) => RE.Typography({key:pi, variant:"h5"},
-                    p.map((w, wi) => RE.span(
+            if (hasValue(newTextToLearn)) {
+                return RE.Container.col.top.left({},{style:{marginBottom:"20px"}},
+                    RE.Container.row.left.center({},{style:{marginRight:"20px"}},
+                        RE.Button({color:'primary', onClick: () => setNewTextToLearn(null) }, 'Cancel'),
+                        RE.Button({variant:"contained", color:'primary', onClick: saveNewTextToLearn}, 'Save'),
+                    ),
+                    RE.TextField(
                         {
-                            key: wi,
-                            style: {backgroundColor: (highlightActiveWords && w.active) ? "yellow" : ""}
-                        },
-                        w.value
+                            variant: 'outlined', label: 'Text', multiline: true, rowsMax: 10, fullWidth:true,
+                            style: {width: '600px'},
+                            onChange: event => setNewTextToLearn(event.target.value),
+                            value: newTextToLearn
+                        }
+                    )
+                )
+            } else {
+                return RE.Container.col.top.left({}, {style:{marginBottom:"20px"}},
+                    beState.words.map((p, pi) => RE.Typography({key:pi, variant:"h5"},
+                        p.filter(w=>!w.meta).map((w, wi) => RE.span(
+                            {
+                                key: wi,
+                                style: {backgroundColor: (highlightActiveWords && w.active) ? "yellow" : ""}
+                            },
+                            w.value
+                        ))
                     ))
-                ))
-            )
+                )
+            }
         } else {
             return null
         }

@@ -12,6 +12,7 @@ import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
 import org.igor.onlinegames.wordsgame.dto.WordsGameErrorDto;
 import org.igor.onlinegames.wordsgame.dto.WordsGameIncorrectPasscodeErrorDto;
+import org.igor.onlinegames.wordsgame.dto.WordsGameNewTextWasSavedMsgDto;
 import org.igor.onlinegames.wordsgame.dto.WordsGameNoAvailablePlacesErrorDto;
 import org.igor.onlinegames.wordsgame.dto.WordsGamePasscodeIsRequiredErrorDto;
 import org.igor.onlinegames.wordsgame.dto.WordsGamePhase;
@@ -50,6 +51,7 @@ import java.util.stream.Collectors;
 import static org.igor.onlinegames.common.OnlinegamesUtils.nullSafeGetter;
 import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.DISCARDED;
 import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.ENTER_WORD;
+import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.FINISHED;
 import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.SELECT_WORD;
 import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
 
@@ -98,7 +100,7 @@ public class WordsGameState extends State implements GameState {
         if (StringUtils.isEmpty(textToLearn)) {
             throw new OnlinegamesException("StringUtils.isEmpty(wordsToLearnStr)");
         }
-        words = TextProcessing.splitOnParagraphs(textToLearn, null);
+        words = TextProcessing.splitOnParagraphs(textToLearn);
         timerStr = getNonEmptyTextFromParams(args, TIMER);
         timerSeconds = parseTimerValue(timerStr);
         title = getNonEmptyTextFromParams(args, TITLE);
@@ -172,6 +174,22 @@ public class WordsGameState extends State implements GameState {
             sendMessageToFe(session, new WordsGameErrorDto("You don't have permissions to discard this game."));
         } else {
             phase = DISCARDED;
+            broadcastGameState();
+        }
+    }
+
+    @RpcMethod
+    public synchronized void setTextToLearn(WebSocketSession session, String newTextToLearn) {
+        executeOnBehalfOfPlayer(session, player -> setTextToLearn(player, newTextToLearn));
+    }
+
+    private void setTextToLearn(WordsPlayer player, String newTextToLearn) {
+        if (phase != DISCARDED && phase != ENTER_WORD && phase != FINISHED
+                && player.isGameOwner()
+                && StringUtils.isNoneBlank(newTextToLearn)) {
+            textToLearn = newTextToLearn;
+            words = TextProcessing.splitOnParagraphs(textToLearn);
+            player.sendMessageToFe(new WordsGameNewTextWasSavedMsgDto());
             broadcastGameState();
         }
     }
@@ -309,6 +327,7 @@ public class WordsGameState extends State implements GameState {
         return WordsPlayer.builder()
                 .gameOwner(extractUserIdFromSession(session).equals(gameOwnerUserId))
                 .name(extractPlayerNameFromSession(session))
+                .feMessageSender(msg -> sendMessageToFe(session, msg))
                 .build();
     }
 
@@ -329,12 +348,11 @@ public class WordsGameState extends State implements GameState {
     }
 
     private void executeOnBehalfOfPlayer(WebSocketSession session, Consumer<WordsPlayer> executor) {
-        final WordsPlayer player = extractPlayerFromSession(session);
-        if (player != null) {
-            executor.accept(player);
-        } else {
-            throw new OnlinegamesException("player == null");
+        WordsPlayer player = extractPlayerFromSession(session);
+        if (player == null) {
+            player = sessionToMinimalPlayer(session);
         }
+        executor.accept(player);
     }
 
     private WordsPlayer extractPlayerFromSession(WebSocketSession session) {

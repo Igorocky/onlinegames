@@ -20,10 +20,12 @@ public class TextProcessingTest {
         List<List<TextToken>> paragraphs = TextProcessing.splitOnParagraphs(text, "ignored\n");
 
         //then
-        assertEquals(2, paragraphs.size());
+        assertEquals(3, paragraphs.size());
         assertEquals("!…", paragraphs.get(0).get(paragraphs.get(0).size()-2).getValue());
         assertEquals(System.lineSeparator(), paragraphs.get(0).get(paragraphs.get(0).size()-1).getValue());
-        assertEquals("abc", paragraphs.get(1).get(paragraphs.get(1).size()-1).getValue());
+        assertEquals("abc", paragraphs.get(1).get(paragraphs.get(1).size()-2).getValue());
+        assertEquals(System.lineSeparator(), paragraphs.get(1).get(paragraphs.get(1).size()-1).getValue());
+        assertEquals("C", paragraphs.get(2).get(paragraphs.get(2).size()-1).getValue());
 
         List<TextToken> tokens = new ArrayList<>();
         paragraphs.forEach(tokens::addAll);
@@ -37,9 +39,9 @@ public class TextProcessingTest {
         assertEquals(TextToken.builder().value("    ").build(), tokens.get(i++));
         assertEquals(TextToken.builder().value("1Word").active(true).build(), tokens.get(i++));
         assertEquals(TextToken.builder().value(": ").build(), tokens.get(i++));
-        assertEquals(TextToken.builder().value("[[").meta(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value("[").meta(true).build(), tokens.get(i++));
         assertEquals(TextToken.builder().value("1word3").active(true).unsplittable(true).build(), tokens.get(i++));
-        assertEquals(TextToken.builder().value("]]").meta(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value("]").meta(true).build(), tokens.get(i++));
         assertEquals(TextToken.builder().value(" ").build(), tokens.get(i++));
         assertEquals(TextToken.builder().value("-").build(), tokens.get(i++));
         assertEquals(TextToken.builder().value(" ").build(), tokens.get(i++));
@@ -61,18 +63,26 @@ public class TextProcessingTest {
         assertEquals(TextToken.builder().value("no").active(true).build(), tokens.get(i++));
         assertEquals(TextToken.builder().value(".").build(), tokens.get(i++));
         assertEquals(TextToken.builder().value(" ").build(), tokens.get(i++));
-        assertEquals(TextToken.builder().value("[[").meta(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value("[").meta(true).build(), tokens.get(i++));
         assertEquals(TextToken.builder().value("un split table").active(true).unsplittable(true).build(), tokens.get(i++));
-        assertEquals(TextToken.builder().value("]]").meta(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value("]").meta(true).build(), tokens.get(i++));
         assertEquals(TextToken.builder().value(" ").build(), tokens.get(i++));
         assertEquals(TextToken.builder().value("abc").active(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value(System.lineSeparator()).meta(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value("A").active(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value(" ").build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value("{").meta(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value("B").ignored(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value("}").meta(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value(" ").build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value("C").active(true).build(), tokens.get(i++));
         assertEquals(i, tokens.size());
     }
 
     @Test
     public void splitOnSentences_should_work_correctly_2() throws IOException {
         //given
-        String text = "[[site.com]]";
+        String text = "[site.com]";
 
         //when
         List<TextToken> tokens = TextProcessing.splitOnTokens(text, null);
@@ -81,9 +91,9 @@ public class TextProcessingTest {
         assertEquals(3, tokens.size());
         int i = 0;
 
-        assertEquals(TextToken.builder().value("[[").meta(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value("[").meta(true).build(), tokens.get(i++));
         assertEquals(TextToken.builder().value("site.com").active(true).unsplittable(true).build(), tokens.get(i++));
-        assertEquals(TextToken.builder().value("]]").meta(true).build(), tokens.get(i++));
+        assertEquals(TextToken.builder().value("]").meta(true).build(), tokens.get(i++));
         assertEquals(i, tokens.size());
     }
 }

@@ -19,6 +19,7 @@ public class TextToken {
     private String value;
 
     private Boolean unsplittable;
+    private Boolean ignored;
     private Boolean meta;
     private Boolean active;
 }
