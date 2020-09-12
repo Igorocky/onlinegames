@@ -8,6 +8,7 @@ const RIGHT_KEY_CODE = 39
 const DOWN_KEY_CODE = 40
 
 const XO_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX = 'XoGamePlayerView.'
+const WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX = 'WordsGamePlayerView.'
 
 function hasValue(variable) {
     return variable !== undefined && variable !== null

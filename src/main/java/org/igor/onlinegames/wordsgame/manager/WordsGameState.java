@@ -93,7 +93,10 @@ public class WordsGameState extends State implements GameState {
 
     @Override
     protected void init(JsonNode args) {
-        wordsToLearnStr = args.get(WORDS_TO_LEARN).asText();
+        wordsToLearnStr = getNonEmptyTextFromParams(args, WORDS_TO_LEARN);
+        if (StringUtils.isEmpty(wordsToLearnStr)) {
+            throw new OnlinegamesException("StringUtils.isEmpty(wordsToLearnStr)");
+        }
         timerStr = getNonEmptyTextFromParams(args, TIMER);
         timerSeconds = parseTimerValue(timerStr);
         title = getNonEmptyTextFromParams(args, TITLE);

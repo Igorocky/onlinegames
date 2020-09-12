@@ -82,6 +82,8 @@ const GameSelector = ({openView}) => {
     function joinGame(gameType, gameId) {
         if (gameType === 'XoGame') {
             openView(VIEW_URLS.xoGame({gameId}))
+        } else if (gameType === 'WordsGame') {
+            openView(VIEW_URLS.wordsGame({gameId}))
         }
     }
 
@@ -174,8 +176,9 @@ const GameSelector = ({openView}) => {
     }
 
     function renderButtonList() {
-        return RE.Container.row.left.center({},{style:{marginBottom: '10px'}},
-            RE.Button({variant:"contained", onClick: () => setOpenedDialog(() => NewXoGameDialog)}, 'New XO game')
+        return RE.Container.row.left.center({},{style:{marginBottom: '10px', marginRight: '10px'}},
+            RE.Button({variant:"contained", onClick: () => setOpenedDialog(() => NewXoGameDialog)}, 'New XO game'),
+            RE.Button({variant:"contained", onClick: () => setOpenedDialog(() => NewWordsGameDialog)}, 'New WORDS game'),
         )
     }
 
