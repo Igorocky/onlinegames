@@ -84,19 +84,19 @@ public abstract class State {
         return createdAt;
     }
 
-    public Instant getLastInMsgAt() {
+    public synchronized Instant getLastInMsgAt() {
         return lastInMsgAt;
     }
 
-    public void setLastInMsgAt(Instant lastInMsgAt) {
+    public synchronized void setLastInMsgAt(Instant lastInMsgAt) {
         this.lastInMsgAt = lastInMsgAt;
     }
 
-    public Instant getLastOutMsgAt() {
+    public synchronized Instant getLastOutMsgAt() {
         return lastOutMsgAt;
     }
 
-    public void setLastOutMsgAt(Instant lastOutMsgAt) {
+    public synchronized void setLastOutMsgAt(Instant lastOutMsgAt) {
         this.lastOutMsgAt = lastOutMsgAt;
     }
 
@@ -108,7 +108,7 @@ public abstract class State {
         this.stateId = stateId;
     }
 
-    protected Object getViewRepresentation() {
+    protected synchronized Object getViewRepresentation() {
         return this.toString();
     }
 

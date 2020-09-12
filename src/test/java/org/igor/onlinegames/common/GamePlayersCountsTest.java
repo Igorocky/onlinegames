@@ -1,4 +1,4 @@
-package org.igor.onlinegames.xogame.manager;
+package org.igor.onlinegames.common;
 
 import org.junit.Test;
 
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class XoGamePlayersCountsTest {
+public class GamePlayersCountsTest {
     @Test
     public void getAndUpdateOrderOfPlayers_distributes_counts_equally() {
         getAndUpdateOrderOfPlayers_distributes_counts_equally(5, 1000, 200);
@@ -31,7 +31,7 @@ public class XoGamePlayersCountsTest {
             userIds.add(UUID.randomUUID());
         }
         Stats stats = new Stats(userIds);
-        XoGamePlayersCounts gamePlayersCounts = new XoGamePlayersCounts();
+        GamePlayersCounts gamePlayersCounts = new GamePlayersCounts();
 
         //when
         for (int i = 0; i < numOfIterations; i++) {

@@ -3,6 +3,7 @@ package org.igor.onlinegames.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.igor.onlinegames.common.GamePlayersCounts;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -40,5 +41,15 @@ public class AppConfig implements WebMvcConfigurer {
     @Bean
     public ScheduledExecutorService scheduledExecutorService() {
         return Executors.newScheduledThreadPool(4);
+    }
+
+    @Bean("xoGamePlayersCounts")
+    public GamePlayersCounts xoGamePlayersCounts() {
+        return new GamePlayersCounts();
+    }
+
+    @Bean("wordsGamePlayersCounts")
+    public GamePlayersCounts wordsGamePlayersCounts() {
+        return new GamePlayersCounts();
     }
 }

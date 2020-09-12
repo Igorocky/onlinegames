@@ -1,7 +1,6 @@
-package org.igor.onlinegames.xogame.manager;
+package org.igor.onlinegames.common;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -15,8 +14,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Component
-public class XoGamePlayersCounts {
+public class GamePlayersCounts {
     private final Random rnd = new Random();
     private Map<Set<UUID>,Map<UUID,int[]>> counts = new HashMap<>();
 

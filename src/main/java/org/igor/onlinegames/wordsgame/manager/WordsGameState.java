@@ -1,8 +1,7 @@
-package org.igor.onlinegames.xogame.manager;
+package org.igor.onlinegames.wordsgame.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
 import org.igor.onlinegames.common.GamePlayersCounts;
 import org.igor.onlinegames.common.OnlinegamesUtils;
@@ -11,37 +10,27 @@ import org.igor.onlinegames.model.GameState;
 import org.igor.onlinegames.model.UserSessionData;
 import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
-import org.igor.onlinegames.xogame.dto.XoCellDto;
-import org.igor.onlinegames.xogame.dto.XoGameErrorDto;
-import org.igor.onlinegames.xogame.dto.XoGameIncorrectPasscodeErrorDto;
-import org.igor.onlinegames.xogame.dto.XoGameNoAvailablePlacesErrorDto;
-import org.igor.onlinegames.xogame.dto.XoGamePasscodeIsRequiredErrorDto;
-import org.igor.onlinegames.xogame.dto.XoGamePhase;
-import org.igor.onlinegames.xogame.dto.XoGamePlayerNameIsOccupiedErrorDto;
-import org.igor.onlinegames.xogame.dto.XoGamePlayerNameWasSetMsgDto;
-import org.igor.onlinegames.xogame.dto.XoGameStateDto;
-import org.igor.onlinegames.xogame.dto.XoPlayerDto;
-import org.igor.onlinegames.xogame.dto.history.XoGameMoveDto;
-import org.igor.onlinegames.xogame.dto.history.XoGamePlayerInfoDto;
-import org.igor.onlinegames.xogame.dto.history.XoGameRecordDto;
+import org.igor.onlinegames.wordsgame.dto.WordsGameErrorDto;
+import org.igor.onlinegames.wordsgame.dto.WordsGameIncorrectPasscodeErrorDto;
+import org.igor.onlinegames.wordsgame.dto.WordsGameNoAvailablePlacesErrorDto;
+import org.igor.onlinegames.wordsgame.dto.WordsGamePasscodeIsRequiredErrorDto;
+import org.igor.onlinegames.wordsgame.dto.WordsGamePhase;
+import org.igor.onlinegames.wordsgame.dto.WordsGamePlayerNameIsOccupiedErrorDto;
+import org.igor.onlinegames.wordsgame.dto.WordsGamePlayerNameWasSetMsgDto;
+import org.igor.onlinegames.wordsgame.dto.WordsGameStateDto;
+import org.igor.onlinegames.wordsgame.dto.WordsPlayerDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -52,74 +41,59 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.igor.onlinegames.common.OnlinegamesUtils.listOf;
 import static org.igor.onlinegames.common.OnlinegamesUtils.nullSafeGetter;
+import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.DISCARDED;
+import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.ENTER_WORD;
+import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.SELECT_WORD;
+import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
 
-@Component("XoGame")
+@Component("WordsGame")
 @Scope("prototype")
-public class XoGameState extends State implements GameState {
+public class WordsGameState extends State implements GameState {
 
     private static final String PLAYER_STATE = "playerState";
-    private static final List<Character> POSSIBLE_SYMBOLS = listOf('x','o','s','t','a');
-    public static final int MAX_NUMBER_OF_PLAYERS = POSSIBLE_SYMBOLS.size();
+    public static final int MAX_NUMBER_OF_PLAYERS = 10;
     private static final String TITLE = "title";
     private static final String PASSCODE = "passcode";
-    private static final String FIELD_SIZE = "fieldSize";
-    private static final String GOAL = "goal";
+    private static final String WORDS_TO_LEARN = "wordsToLearn";
     private static final String TIMER = "timer";
     private static final Pattern TIMER_VALUE_PATTERN_1 = Pattern.compile("^(\\d+)([sm])$");
     private static final Pattern TIMER_VALUE_PATTERN_2 = Pattern.compile("^(\\d+)m(\\d+)s$");
     private static final String PLAYER_NAME = "PLAYER_NAME";
-    private static final Duration INACTIVITY_INTERVAL = Duration.of(10, ChronoUnit.MINUTES);
+    private static final Duration INACTIVITY_INTERVAL = Duration.of(30, ChronoUnit.MINUTES);
 
-    @Value("${app.xogame.history-path}")
+    @Value("${app.wordsgame.history-path}")
     private String historyPath;
     @Autowired
     private ObjectMapper mapper;
     @Autowired
-    @Qualifier("xoGamePlayersCounts")
+    @Qualifier("wordsGamePlayersCounts")
     private GamePlayersCounts gamePlayersCounts;
     private Instant lastActionAt = Instant.now();
 
     private String title;
     private String passcode;
+    private String wordsToLearnStr;
     private Set<UUID> userIdsEverConnected = new HashSet<>();
-    private XoGamePhase phase = XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
+    private WordsGamePhase phase = WAITING_FOR_PLAYERS_TO_JOIN;
     private UUID gameOwnerUserId;
-    private List<XoPlayer> players;
-    private Map<UUID,XoPlayer> userIdToPlayer;
-    private int fieldSize;
-    private int goal;
+    private List<WordsPlayer> players;
+    private Map<UUID,WordsPlayer> userIdToPlayer;
     private String timerStr;
     private Integer timerSeconds;
     private ScheduledExecutorService scheduledExecutorService;
     private ScheduledFuture<?> timerHandle;
-    private Character[][] field;
-    private List<Integer> lastCell;
-    private XoPlayer playerToMove;
-    private XoPlayer winner;
-    private List<List<Integer>> winnerPath;
-
-    private XoGameRecordDto history;
-    private final static DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd");
-    private final static DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd__HH_mm_ss");
+    private WordsPlayer playerToMove;
 
     @Override
     protected void init(JsonNode args) {
-        fieldSize = args.get(FIELD_SIZE).asInt();
-        field = new Character[fieldSize][fieldSize];
-        goal = args.get(GOAL).asInt();
-        if (fieldSize < goal) {
-            throw new OnlinegamesException("fieldSize < goal");
-        }
-
+        wordsToLearnStr = args.get(WORDS_TO_LEARN).asText();
         timerStr = getNonEmptyTextFromParams(args, TIMER);
         timerSeconds = parseTimerValue(timerStr);
         title = getNonEmptyTextFromParams(args, TITLE);
@@ -128,12 +102,12 @@ public class XoGameState extends State implements GameState {
 
     @Override
     public synchronized boolean bind(WebSocketSession session, JsonNode bindParams) {
-        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
+        if (phase == WAITING_FOR_PLAYERS_TO_JOIN) {
             if (gameOwnerUserId == null) {
                 gameOwnerUserId = extractUserIdFromSession(session);
             }
             if (getNumberOfWaitingPlayers() >= MAX_NUMBER_OF_PLAYERS) {
-                sendMessageToFe(session, new XoGameNoAvailablePlacesErrorDto());
+                sendMessageToFe(session, new WordsGameNoAvailablePlacesErrorDto());
                 return false;
             } else if (!checkPasscode(session, bindParams)) {
                 return false;
@@ -177,36 +151,33 @@ public class XoGameState extends State implements GameState {
                 players.stream()
                         .filter(player -> player.getUserId().equals(userId))
                         .forEach(player -> player.setName(finalPlayerName));
-                history.getPlayers().stream()
-                        .filter(player -> player.getUserId().equals(userId))
-                        .forEach(player -> player.setPlayerName(finalPlayerName));
             }
-            sendMessageToFe(session, new XoGamePlayerNameWasSetMsgDto(playerName));
+            sendMessageToFe(session, new WordsGamePlayerNameWasSetMsgDto(playerName));
             broadcastGameState();
         }
     }
 
     @RpcMethod
     public synchronized void discard(WebSocketSession session) {
-        if (phase != XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
+        if (phase != WAITING_FOR_PLAYERS_TO_JOIN) {
             return;
         }
         final UUID userId = extractUserIdFromSession(session);
         if (!userId.equals(gameOwnerUserId)) {
-            sendMessageToFe(session, new XoGameErrorDto("You don't have permissions to discard game."));
+            sendMessageToFe(session, new WordsGameErrorDto("You don't have permissions to discard this game."));
         } else {
-            phase = XoGamePhase.DISCARDED;
+            phase = DISCARDED;
             broadcastGameState();
         }
     }
 
     @RpcMethod
     public synchronized void startGame(WebSocketSession session) {
-        if (phase != XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN) {
+        if (phase != WAITING_FOR_PLAYERS_TO_JOIN) {
             return;
         }
         if (!extractUserIdFromSession(session).equals(gameOwnerUserId)) {
-            sendMessageToFe(session, new XoGameErrorDto("You don't have permissions to start game."));
+            sendMessageToFe(session, new WordsGameErrorDto("You don't have permissions to start this game."));
         } else {
             players = new ArrayList<>();
             List<UUID> userIds = new ArrayList<>(
@@ -219,51 +190,37 @@ public class XoGameState extends State implements GameState {
             );
             userIds.add(gameOwnerUserId);
             userIds = gamePlayersCounts.getAndUpdateOrderOfPlayers(userIds);
-            List<Character> possibleSymbols = new ArrayList<>(POSSIBLE_SYMBOLS);
             for (UUID userId : userIds) {
                 players.add(createPlayer(
                         userId,
                         players.size(),
-                        possibleSymbols.remove(0),
                         getPlayerNameFromSession(userId)
                 ));
             }
             userIdToPlayer = players.stream().collect(Collectors.toMap(
-                    XoPlayer::getUserId,
+                    WordsPlayer::getUserId,
                     Function.identity()
             ));
             playerToMove = players.get(0);
-            phase = XoGamePhase.IN_PROGRESS;
+            phase = SELECT_WORD;
             if (timerSeconds != null) {
                 scheduledExecutorService = Executors.newScheduledThreadPool(1);
                 startTimerForCurrentPlayer();
             }
-            history = XoGameRecordDto.builder()
-                    .gameId(stateId)
-                    .startedAt(Instant.now())
-                    .fieldSize(fieldSize)
-                    .goal(goal)
-                    .secondsPerMove(timerSeconds)
-                    .players(
-                            players.stream()
-                            .map(
-                                    playerState -> XoGamePlayerInfoDto.builder()
-                                            .userId(playerState.getUserId())
-                                            .playerId(playerState.getPlayerId())
-                                            .playerName(playerState.getName())
-                                            .build()
-                            ).collect(Collectors.toList())
-                    )
-                    .moves(new LinkedList<>())
-                    .build();
             broadcastGameState();
         }
     }
 
     @RpcMethod
-    public synchronized void clickCell(WebSocketSession session, int x, int y) {
-        if (phase == XoGamePhase.IN_PROGRESS) {
-            executeOnBehalfOfPlayer(session, player -> clickCell(player, x, y));
+    public synchronized void selectWord(WebSocketSession session) {
+        if (phase == SELECT_WORD) {
+            executeOnBehalfOfPlayer(session, player -> selectWord(player));
+        }
+    }
+
+    protected synchronized void onTimer() {
+        if (timerHandle != null) {
+
         }
     }
 
@@ -284,11 +241,11 @@ public class XoGameState extends State implements GameState {
             String userProvidedPasscode = StringUtils.trimToNull(bindParams.get(PASSCODE).asText(null));
             final boolean passcodeMatches = passcode.equals(userProvidedPasscode);
             if (!passcodeMatches) {
-                sendMessageToFe(session, new XoGameIncorrectPasscodeErrorDto());
+                sendMessageToFe(session, new WordsGameIncorrectPasscodeErrorDto());
             }
             return passcodeMatches;
         } else {
-            sendMessageToFe(session, new XoGamePasscodeIsRequiredErrorDto());
+            sendMessageToFe(session, new WordsGamePasscodeIsRequiredErrorDto());
             return false;
         }
     }
@@ -326,7 +283,7 @@ public class XoGameState extends State implements GameState {
             return true;
         } else {
             if (getConnectedPlayerNames(session).contains(playerName)) {
-                sendMessageToFe(session, new XoGamePlayerNameIsOccupiedErrorDto(playerName));
+                sendMessageToFe(session, new WordsGamePlayerNameIsOccupiedErrorDto(playerName));
                 return false;
             } else {
                 return true;
@@ -334,7 +291,7 @@ public class XoGameState extends State implements GameState {
         }
     }
 
-    private XoPlayer sessionToPlayer(WebSocketSession session) {
+    private WordsPlayer sessionToPlayer(WebSocketSession session) {
         UUID userId = extractUserIdFromSession(session);
         if (userIdToPlayer == null || !userIdToPlayer.containsKey(userId)) {
             return sessionToMinimalPlayer(session);
@@ -343,19 +300,18 @@ public class XoGameState extends State implements GameState {
         }
     }
 
-    private XoPlayer sessionToMinimalPlayer(WebSocketSession session) {
-        return XoPlayer.builder()
+    private WordsPlayer sessionToMinimalPlayer(WebSocketSession session) {
+        return WordsPlayer.builder()
                 .gameOwner(extractUserIdFromSession(session).equals(gameOwnerUserId))
                 .name(extractPlayerNameFromSession(session))
                 .build();
     }
 
-    private XoPlayer createPlayer(UUID userId, int playerId, Character playerSymbol, String playerName) {
-        return XoPlayer.builder()
+    private WordsPlayer createPlayer(UUID userId, int playerId, String playerName) {
+        return WordsPlayer.builder()
                 .userId(userId)
                 .gameOwner(userId.equals(gameOwnerUserId))
                 .playerId(playerId)
-                .playerSymbol(playerSymbol)
                 .name(playerName)
                 .feMessageSender(msg -> sendMessageToFe(userId, msg))
                 .build();
@@ -367,8 +323,8 @@ public class XoGameState extends State implements GameState {
                 .forEach(session -> sendMessageToFe(session, msg));
     }
 
-    private void executeOnBehalfOfPlayer(WebSocketSession session, Consumer<XoPlayer> executor) {
-        final XoPlayer player = extractPlayerFromSession(session);
+    private void executeOnBehalfOfPlayer(WebSocketSession session, Consumer<WordsPlayer> executor) {
+        final WordsPlayer player = extractPlayerFromSession(session);
         if (player != null) {
             executor.accept(player);
         } else {
@@ -376,8 +332,8 @@ public class XoGameState extends State implements GameState {
         }
     }
 
-    private XoPlayer extractPlayerFromSession(WebSocketSession session) {
-        XoPlayer boundPlayer = (XoPlayer) session.getAttributes().get(PLAYER_STATE);
+    private WordsPlayer extractPlayerFromSession(WebSocketSession session) {
+        WordsPlayer boundPlayer = (WordsPlayer) session.getAttributes().get(PLAYER_STATE);
         if (boundPlayer == null && players != null) {
             UUID userId = extractUserIdFromSession(session);
             boundPlayer = players.stream()
@@ -406,9 +362,9 @@ public class XoGameState extends State implements GameState {
         }
     }
 
-    private XoGameStateDto createViewOfCurrentState(XoPlayer player) {
-        if (phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN || phase == XoGamePhase.DISCARDED) {
-            return XoGameStateDto.builder()
+    private WordsGameStateDto createViewOfCurrentState(WordsPlayer player) {
+        if (phase == WAITING_FOR_PLAYERS_TO_JOIN || phase == DISCARDED) {
+            return WordsGameStateDto.builder()
                     .title(title)
                     .passcode(player.ifGameOwner(() -> passcode))
                     .phase(phase)
@@ -416,25 +372,18 @@ public class XoGameState extends State implements GameState {
                     .namesOfWaitingPlayers(getConnectedPlayerNames(null))
                     .currentPlayerName(player.getName())
                     .currentUserIsGameOwner(player.isGameOwner())
-                    .fieldSize(fieldSize)
-                    .goal(goal)
+                    .wordsToLearnStr(wordsToLearnStr)
                     .timerSeconds(getRemainingTimerDelay())
-                    .field(createFieldDto(field))
                     .build();
         } else {
-            return XoGameStateDto.builder()
+            return WordsGameStateDto.builder()
                     .phase(phase)
                     .currentUserIsGameOwner(player.isGameOwner())
-                    .fieldSize(fieldSize)
-                    .goal(goal)
+                    .wordsToLearnStr(wordsToLearnStr)
                     .timerSeconds(getRemainingTimerDelay())
-                    .field(createFieldDto(field))
-                    .lastCell(lastCell)
                     .currentPlayerId(player.getPlayerId())
                     .players(createPlayersDto(player, players))
-                    .playerIdToMove(nullSafeGetter(playerToMove, XoPlayer::getPlayerId))
-                    .winnerId(nullSafeGetter(winner, XoPlayer::getPlayerId))
-                    .winnerPath(winnerPath)
+                    .playerIdToMove(nullSafeGetter(playerToMove, WordsPlayer::getPlayerId))
                     .build();
         }
     }
@@ -455,86 +404,15 @@ public class XoGameState extends State implements GameState {
                 .count();
     }
 
-    private void clickCell(XoPlayer player, int x, int y) {
-        if (phase == XoGamePhase.IN_PROGRESS) {
-            if (!(0 <= x && x < field.length && 0 <= y && y < field[0].length)) {
-                player.sendMessageToFe(new XoGameErrorDto("Incorrect coordinates: x = " + x + ", y = " + y + "."));
-            } else if (playerToMove != player) {
-                player.sendMessageToFe(new XoGameErrorDto("It's not your turn."));
-            } else if (field[x][y] != null) {
-                player.sendMessageToFe(new XoGameErrorDto("The cell you clicked is not empty."));
-            } else {
-                lastActionAt = Instant.now();
-                if (timerHandle != null) {
-                    timerHandle.cancel(true);
-                    timerHandle = null;
-                }
-                history.getMoves().add(
-                        XoGameMoveDto.builder()
-                                .moveNumber(history.getMoves().size()+1)
-                                .playerId(player.getPlayerId())
-                                .time(Instant.now())
-                                .x(x)
-                                .y(y)
-                                .build()
-                );
-                field[x][y] = player.getPlayerSymbol();
-                lastCell = listOf(x,y);
-
-                winnerPath = findPath(true);
-                if (winnerPath != null) {
-                    history.setWinnerPath(winnerPath);
-                    playerToMove = null;
-                    Character winnerSymbol = field[winnerPath.get(0).get(0)][winnerPath.get(0).get(1)];
-                    winner = players.stream()
-                            .filter(xoPlayer -> winnerSymbol.equals(xoPlayer.getPlayerSymbol()))
-                            .findFirst()
-                            .get();
-                    history.setWinnerId(winner.getPlayerId());
-                    phase = XoGamePhase.FINISHED;
-                } else if (isDraw()) {
-                    playerToMove = null;
-                    history.setDraw(true);
-                    phase = XoGamePhase.FINISHED;
-                } else {
-                    setNextPlayerToMove();
-                    if (timerSeconds != null) {
-                        startTimerForCurrentPlayer();
-                    }
-                }
-                broadcastGameState();
-            }
-            if (phase == XoGamePhase.FINISHED) {
-                shutdownTimer();
-                history.setFinishedAt(Instant.now());
-                saveHistory();
+    private void selectWord(WordsPlayer player) {
+        if (phase == SELECT_WORD) {
+            if (playerToMove != player) {
+                player.sendMessageToFe(new WordsGameErrorDto("It's not your turn."));
             }
         }
     }
 
-    public static String getGameHistoryDirPath(String historyPath, Instant startedAt) {
-        return historyPath + "/" + DATE_FORMATTER.format(startedAt.atZone(ZoneOffset.UTC));
-    }
-
-    protected static String getGameHistoryFilePath(String historyPath, Instant startedAt, UUID gameId) {
-        return getGameHistoryDirPath(historyPath, startedAt)
-                + "/xogame-" + DATE_TIME_FORMATTER.format(startedAt.atZone(ZoneOffset.UTC))
-                + "-" + gameId + ".json";
-    }
-
-    @SneakyThrows
-    private void saveHistory() {
-        history.getPlayers().stream()
-                .filter(player -> player.getPlayerName() == null)
-                .forEach(player -> player.setPlayerName("Incognito"));
-        final File file = new File(getGameHistoryFilePath(historyPath, history.getStartedAt(), history.getGameId()));
-        file.getParentFile().mkdirs();
-        try (final FileWriter fileWriter = new FileWriter(file)) {
-            fileWriter.write(mapper.writeValueAsString(history));
-        }
-    }
-
-    private XoPlayer getNextPlayerToMove() {
+    private WordsPlayer getNextPlayerToMove() {
         return players.get((playerToMove.getPlayerId()+1)%players.size());
     }
 
@@ -542,116 +420,19 @@ public class XoGameState extends State implements GameState {
         sessions.forEach(session -> sendMessageToFe(session, createViewOfCurrentState(sessionToPlayer(session))));
     }
 
-    private List<XoPlayerDto> createPlayersDto(XoPlayer viewer, List<XoPlayer> players) {
+    private List<WordsPlayerDto> createPlayersDto(WordsPlayer viewer, List<WordsPlayer> players) {
         if (players == null) {
             return null;
         } else {
             return players.stream()
-                    .map(xoPlayer -> XoPlayerDto.builder()
+                    .map(xoPlayer -> WordsPlayerDto.builder()
                             .gameOwner(viewer.ifGameOwner(() -> xoPlayer.isGameOwner()))
                             .playerId(xoPlayer.getPlayerId())
                             .name(xoPlayer.getName())
-                            .symbol(xoPlayer.getPlayerSymbol())
                             .build()
                     )
                     .collect(Collectors.toList());
         }
-    }
-
-    private List<XoCellDto> createFieldDto(Character[][] field) {
-        final ArrayList<XoCellDto> cellsDto = new ArrayList<>();
-        for (int x = 0; x < field.length; x++) {
-            for (int y = 0; y < field[x].length; y++) {
-                final Character cellSymbol = field[x][y];
-                if (cellSymbol != null) {
-                    cellsDto.add(XoCellDto.builder().x(x).y(y).symbol(cellSymbol).build());
-                }
-            }
-        }
-        return cellsDto;
-    }
-
-    private void iterateCells(int x, int y, int dx, int dy, BiFunction<Integer, Integer, Boolean> coordsConsumer) {
-        if (dx == 0 && dy == 0) {
-            return;
-        } else {
-            int maxX = fieldSize-1;
-            int maxY = fieldSize-1;
-            while (0<=x && x<=maxX && 0<=y && y<=maxY && coordsConsumer.apply(x,y)) {
-                x+=dx;
-                y+=dy;
-            }
-        }
-    }
-
-    private int countPathLength(BiFunction<Integer, Integer, Boolean> cellBelongsToPath, int startX, int startY, int dx, int dy) {
-        final int[] length = {0};
-        iterateCells(startX, startY, dx, dy, (x,y) -> {
-            final boolean doContinue = cellBelongsToPath.apply(x,y);
-            if (doContinue) {
-                length[0]++;
-            }
-            return doContinue;
-        });
-        return length[0];
-    }
-
-    private List<List<Integer>> createPath(BiFunction<Integer, Integer, Boolean> cellBelongsToPath, int startX, int startY, int dx, int dy) {
-        if (countPathLength(cellBelongsToPath, startX, startY, dx, dy) < goal) {
-            return null;
-        } else {
-            final ArrayList<List<Integer>> path = new ArrayList<>();
-            iterateCells(startX, startY, dx, dy, (x,y) -> {
-                final boolean doContinue = cellBelongsToPath.apply(x,y);
-                if (doContinue) {
-                    path.add(listOf(x,y));
-                }
-                return doContinue;
-            });
-            return path;
-        }
-    }
-
-    private List<List<Integer>> findPath(boolean forWinner) {
-        for (int x = 0; x < fieldSize; x++) {
-            for (int y = 0; y < fieldSize; y++) {
-                for (int dx = -1; dx < 2; dx++) {
-                    for (int dy = -1; dy < 2; dy++) {
-                        Character symbol = field[x][y];
-                        BiFunction<Integer, Integer, Boolean> contFunc = null;
-                        if (forWinner) {
-                            if (symbol != null) {
-                                contFunc = (xx,yy) -> symbol.equals(field[xx][yy]);
-                            }
-                        } else {
-                            if (symbol != null) {
-                                contFunc = (xx,yy) -> symbol.equals(field[xx][yy]) || null == field[xx][yy];
-                            } else {
-                                final Character[] firstFound = {null};
-                                contFunc = (xx,yy) -> {
-                                    final Character currSymb = field[xx][yy];
-                                    if (firstFound[0] == null && currSymb != null) {
-                                        firstFound[0] = currSymb;
-                                    }
-                                    return null == currSymb || Objects.equals(firstFound[0], currSymb);
-                                };
-                            }
-                        }
-                        if (contFunc != null) {
-                            List<List<Integer>> path = createPath(contFunc, x, y, dx, dy);
-                            if (path != null) {
-                                return path;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    private boolean isDraw() {
-        return CollectionUtils.isEmpty(findPath(false));
     }
 
     private Integer parseTimerValue(String timerStr) {
@@ -676,20 +457,18 @@ public class XoGameState extends State implements GameState {
         }
     }
 
-    private synchronized void startTimerForCurrentPlayer() {
+    private void startTimerForCurrentPlayer() {
         if (timerHandle != null) {
             timerHandle.cancel(true);
         }
         timerHandle = startTimerForPlayer(playerToMove);
     }
 
-    private synchronized ScheduledFuture<?> startTimerForPlayer(XoPlayer player) {
+    private ScheduledFuture<?> startTimerForPlayer(WordsPlayer player) {
         return scheduledExecutorService.schedule(
                 () -> {
                     if (playerToMove == player) {
-                        setNextPlayerToMove();
-                        broadcastGameState();
-                        startTimerForCurrentPlayer();
+                        onTimer();
                     }
                 },
                 timerSeconds + 1,
@@ -697,11 +476,7 @@ public class XoGameState extends State implements GameState {
         );
     }
 
-    private synchronized void setNextPlayerToMove() {
-        playerToMove = getNextPlayerToMove();
-    }
-
-    private synchronized void shutdownTimer() {
+    private void shutdownTimer() {
         if (timerHandle != null) {
             timerHandle.cancel(true);
             timerHandle = null;
@@ -722,57 +497,57 @@ public class XoGameState extends State implements GameState {
     }
 
     @Override
-    protected Object getViewRepresentation() {
+    protected synchronized Object getViewRepresentation() {
         return this.getClass().getSimpleName() + "[scheduledExecutorService=" + scheduledExecutorService + "]";
     }
 
     @Override
-    public boolean isWaitingForPlayersToJoin() {
-        return phase == XoGamePhase.WAITING_FOR_PLAYERS_TO_JOIN;
+    public synchronized boolean isWaitingForPlayersToJoin() {
+        return phase == WAITING_FOR_PLAYERS_TO_JOIN;
     }
 
     @Override
-    public boolean isInProgress() {
-        return phase == XoGamePhase.IN_PROGRESS;
+    public synchronized boolean isInProgress() {
+        return phase == SELECT_WORD || phase == ENTER_WORD;
     }
 
     @Override
-    public String gameType() {
-        return "XoGame";
+    public synchronized String gameType() {
+        return "WordsGame";
     }
 
     @Override
-    public String gameDisplayType() {
-        return "XO Game";
+    public synchronized String gameDisplayType() {
+        return "Words Game";
     }
 
     @Override
-    public String getTitle() {
+    public synchronized String getTitle() {
         return title;
     }
 
     @Override
-    public boolean hasPasscode() {
+    public synchronized boolean hasPasscode() {
         return passcode != null;
     }
 
     @Override
-    public String getShortDescription() {
-        return "F " + fieldSize + " / G " + goal + (timerSeconds == null ? "" : " / T " + timerSeconds);
+    public synchronized String getShortDescription() {
+        return "W " + wordsToLearnStr.length() + (timerSeconds == null ? "" : " / T " + timerSeconds);
     }
 
     @Override
-    public boolean isOwner(UserSessionData userData) {
+    public synchronized boolean isOwner(UserSessionData userData) {
         return userData.getUserId().equals(gameOwnerUserId);
     }
 
     @Override
-    public boolean mayBeRemoved() {
+    public synchronized boolean mayBeRemoved() {
         return Duration.between(lastActionAt, Instant.now()).compareTo(INACTIVITY_INTERVAL) > 0;
     }
 
     @Override
-    public void preDestroy() {
+    public synchronized void preDestroy() {
         unbindAndCloseAllWebSockets();
         shutdownTimer();
     }
