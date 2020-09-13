@@ -66,9 +66,9 @@ import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.WAITING_FOR_PLAY
 @Scope("prototype")
 public class WordsGameState extends State implements GameState {
 
-    // TODO: 13.09.2020 translation
     // TODO: 13.09.2020 finish game button
     // TODO: 13.09.2020 timer
+    // TODO: 13.09.2020 sounds
 
     private static final String PLAYER_STATE = "playerState";
     public static final int MAX_NUMBER_OF_PLAYERS = 10;
@@ -216,6 +216,7 @@ public class WordsGameState extends State implements GameState {
         if (!extractUserIdFromSession(session).equals(gameOwnerUserId)) {
             sendMessageToFe(session, new WordsGameErrorDto("You don't have permissions to start this game."));
         } else {
+            lastActionAt = Instant.now();
             players = new ArrayList<>();
             List<UUID> userIds = new ArrayList<>(
                     sessions.stream()
@@ -573,6 +574,7 @@ public class WordsGameState extends State implements GameState {
                 ));
                 return;
             }
+            lastActionAt = Instant.now();
             String userInputTextUpperCase = StringUtils.trimToEmpty(text).toUpperCase();
             if (!userInput.getCorrect().isPresent()) {
                 userInput.setCorrect(Optional.of(selectedWord.getTextUpperCase().equals(userInputTextUpperCase)));
@@ -630,6 +632,7 @@ public class WordsGameState extends State implements GameState {
                 ));
                 return;
             }
+            lastActionAt = Instant.now();
             selectedWord = SelectedWord.builder()
                     .paragraphIndex(paragraphIndex)
                     .wordIndex(wordIndex)

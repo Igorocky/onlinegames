@@ -1,6 +1,9 @@
 "use strict";
 
 const WORDS_GAME_SOUNDS_ENABLED = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'soundsEnabled'
+const WORDS_GAME_LANG_FROM = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'langFromIdx'
+const WORDS_GAME_LANG_TO = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'langToIdx'
+const WORDS_GAME_AVAILABLE_LANGUAGES = ['en', 'ru', 'pl']
 
 const WordsGamePlayerView = ({openView}) => {
     const query = useQuery()
@@ -12,6 +15,18 @@ const WordsGamePlayerView = ({openView}) => {
     const [newPlayerName, setNewPlayerName] = useState(playerName)
     const [conflictingPlayerName, setConflictingPlayerName] = useState(null)
     const [playerNameDialogOpened, setPlayerNameDialogOpened] = useState(false)
+    const [langFromIdx, setLangFromIdx] = useStateFromLocalStorageNumber({
+        key: WORDS_GAME_LANG_FROM,
+        min: 0,
+        max: WORDS_GAME_AVAILABLE_LANGUAGES.length-1,
+        defaultValue: 0
+    })
+    const [langToIdx, setLangToIdx] = useStateFromLocalStorageNumber({
+        key: WORDS_GAME_LANG_TO,
+        min: 0,
+        max: WORDS_GAME_AVAILABLE_LANGUAGES.length-1,
+        defaultValue: 0
+    })
 
     const backend = useBackend({stateId:gameId, bindParams:{playerName}, onMessageFromBackend})
     const [passcode, setPasscode] = useStateFromLocalStorageString({
@@ -31,6 +46,7 @@ const WordsGamePlayerView = ({openView}) => {
     })
     const [highlightActiveWords, setHighlightActiveWords] = useState(false)
     const [newTextToLearn, setNewTextToLearn] = useState(null)
+    const [highlightedWord, setHighlightedWord] = useState(null)
     const [selectedWord, setSelectedWord] = useState(null)
     const [enteredWord, setEnteredWord] = useState('')
 
@@ -59,6 +75,8 @@ const WordsGamePlayerView = ({openView}) => {
             setPlayerNameDialogOpened(false)
         } else if (msg.type == "msg:NewTextWasSaved") {
             setNewTextToLearn(null)
+            setHighlightedWord(null)
+            setSelectedWord(null)
         } else if (msg.type == "error:NoAvailablePlaces") {
             openView(VIEW_URLS.gameSelector)
         } else if (msg.type == "error:PasscodeRequired") {
@@ -191,49 +209,92 @@ const WordsGamePlayerView = ({openView}) => {
         setNewTextToLearn(beState.textToLearn)
     }
 
+    function copyToClipboard(str) {
+        const el = document.createElement('textarea')
+        el.value = str
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+    }
+
     function renderFieldButtons() {
-        return RE.ButtonGroup({variant:"contained", size:"small"},
-            RE.Button({
-                    style:{},
-                    onClick: () => setHighlightActiveWords(old => !old),
-                },
-                RE.Icon({fontSize:"large"}, 'highlight')
-            ),
-            RE.Button({
-                    style:{},
-                    disabled: !beState.currentUserIsGameOwner,
-                    onClick: goToEditMode,
-                },
-                RE.Icon({fontSize:"large"}, 'edit')
-            ),
-            RE.Button({
-                    style:{},
-                    onClick: () => setSoundsEnabled(!soundsEnabled),
-                },
-                soundsEnabled?RE.Icon({fontSize:"large"}, 'volume_up'):RE.Icon({fontSize:"large"}, 'volume_off')
-            ),
-            RE.Button({
-                    style:{},
-                    onClick: () => {
-                        setNewPlayerName(playerName)
-                        setPlayerNameDialogOpened(true)
+        return RE.Container.row.left.center({},{style:{marginRight: '15px'}},
+            RE.ButtonGroup({variant:"contained", size:"small"},
+                RE.Button({
+                        style:{},
+                        onClick: () => {
+                            setHighlightActiveWords(old => !old)
+                            setHighlightedWord(null)
+                            setSelectedWord(null)
+                        },
                     },
-                },
-                RE.Icon({fontSize:"large"}, 'account_box')
+                    RE.Icon({fontSize:"large"}, 'highlight')
+                ),
+                RE.Button({
+                        style:{},
+                        disabled: !beState.currentUserIsGameOwner,
+                        onClick: goToEditMode,
+                    },
+                    RE.Icon({fontSize:"large"}, 'edit')
+                ),
+                RE.Button({
+                        style:{},
+                        onClick: () => setSoundsEnabled(!soundsEnabled),
+                    },
+                    soundsEnabled?RE.Icon({fontSize:"large"}, 'volume_up'):RE.Icon({fontSize:"large"}, 'volume_off')
+                ),
+                RE.Button({
+                        style:{},
+                        onClick: () => {
+                            setNewPlayerName(playerName)
+                            setPlayerNameDialogOpened(true)
+                        },
+                    },
+                    RE.Icon({fontSize:"large"}, 'account_box')
+                ),
+                RE.Button({
+                        style:{},
+                        onClick: goToGameSelector,
+                    },
+                    RE.Icon({fontSize:"large"}, 'home')
+                ),
+                RE.Button({
+                        style:{},
+                        disabled: !(isCurrentUserToSelectWord() && selectedWord),
+                        onClick: sendSelectedWord,
+                    },
+                    RE.Icon({fontSize:"large"}, 'my_location')
+                )
             ),
-            RE.Button({
-                    style:{},
-                    onClick: goToGameSelector,
-                },
-                RE.Icon({fontSize:"large"}, 'home')
-            ),
-            RE.Button({
-                    style:{},
-                    disabled: !(isCurrentUserToSelectWord() && selectedWord),
-                    onClick: sendSelectedWord,
-                },
-                RE.Icon({fontSize:"large"}, 'my_location')
-            )
+            highlightedWord?RE.Container.row.left.center({},{style:{marginRight: '15px'}},
+                RE.Button({variant: 'contained', onClick: () => copyToClipboard(highlightedWord.text)}, 'Copy'),
+                RE.Button({
+                    variant: 'contained',
+                    onClick: () => window.open(
+                        'https://translate.google.com/#view=home&op=translate' +
+                        '&sl=' + WORDS_GAME_AVAILABLE_LANGUAGES[langFromIdx] +
+                        '&tl=' + WORDS_GAME_AVAILABLE_LANGUAGES[langToIdx] +
+                        '&text=' + highlightedWord.text
+                    )
+                }, 'Translate'),
+                RE.Select(
+                    {
+                        value: langFromIdx,
+                        onChange: event => setLangFromIdx(event.target.value),
+                    },
+                    WORDS_GAME_AVAILABLE_LANGUAGES
+                        .map((lang,idx) => RE.MenuItem({key: lang, value: idx}, 'from ' + lang.toUpperCase()))
+                ),
+                RE.Select(
+                    {
+                        value: langToIdx,
+                        onChange: event => setLangToIdx(event.target.value),
+                    },
+                    WORDS_GAME_AVAILABLE_LANGUAGES
+                        .map((lang,idx) => RE.MenuItem({key: lang, value: idx}, 'to ' + lang.toUpperCase()))
+                )
+            ):null
         )
     }
 
@@ -326,12 +387,17 @@ const WordsGamePlayerView = ({openView}) => {
         if (!isActive) {
             return {}
         } else {
-            const highlightedWordColor = 'yellow'
+            const activeWordColor = 'yellow'
+            const highlightedWordColor = 'coral'
             const availableForSelectionWordColor = 'cyan'
             const selectedWordColor = 'dodgerblue'
             let backgroundColor
             if (highlightActiveWords) {
-                backgroundColor = highlightedWordColor
+                if (highlightedWord?.paragraphIndex == paragraphIndex && highlightedWord?.wordIndex == wordIndex) {
+                    backgroundColor = highlightedWordColor
+                } else {
+                    backgroundColor = activeWordColor
+                }
             } else if (beState.phase == 'SELECT_WORD') {
                 if (isCurrentUserToSelectWord()) {
                     if (selectedWord?.paragraphIndex == paragraphIndex && selectedWord?.wordIndex == wordIndex) {
@@ -365,7 +431,9 @@ const WordsGamePlayerView = ({openView}) => {
     }
 
     function activeWordClicked({paragraphIndex, wordIndex, text}) {
-        if (isCurrentUserToSelectWord()) {
+        if (highlightActiveWords) {
+            setHighlightedWord({paragraphIndex, wordIndex, text})
+        } else if (!highlightActiveWords && isCurrentUserToSelectWord()) {
             setSelectedWord({paragraphIndex, wordIndex, text})
         }
     }
