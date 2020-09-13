@@ -118,7 +118,7 @@ const WordsGamePlayerView = ({openView}) => {
             let title
             if (!hasValue(beState.currentPlayerId)) {
                 title = RE.Fragment({}, "You are watching this game.")
-            } else if (beState.playerIdToMove == beState.currentPlayerId) {
+            } else if (isTurnOfCurrentUser()) {
                 title = RE.Fragment({}, "Select a word")
             } else {
                 title = `Waiting for ${getPlayerById(beState.playerIdToMove).name} to select a word`
@@ -128,7 +128,7 @@ const WordsGamePlayerView = ({openView}) => {
             let title
             if (!hasValue(beState.currentPlayerId)) {
                 title = RE.Fragment({}, "You are watching this game.")
-            } else if (beState.playerIdToMove == beState.currentPlayerId) {
+            } else if (isTurnOfCurrentUser()) {
                 title = RE.Fragment({}, `Waiting for your opponent${beState.players.length>2?'s':''} to respond.`)
             } else {
                 title = `Enter the hidden word`
@@ -153,6 +153,14 @@ const WordsGamePlayerView = ({openView}) => {
 
     function getPlayerById(playerId) {
         return beState.players.find(player => player.playerId == playerId)
+    }
+
+    function getUserInputForCurrentPlayer() {
+        if (beState.selectedWord?.userInputs) {
+            return beState.selectedWord?.userInputs.find(userInput => userInput.playerId == beState.currentPlayerId)
+        } else {
+            return null
+        }
     }
 
     function renderPageContent() {
@@ -223,7 +231,7 @@ const WordsGamePlayerView = ({openView}) => {
                     disabled: !(isCurrentUserToSelectWord() && selectedWord),
                     onClick: sendSelectedWord,
                 },
-                RE.Icon({fontSize:"large"}, 'done_outline')
+                RE.Icon({fontSize:"large"}, 'my_location')
             )
         )
     }
@@ -236,26 +244,52 @@ const WordsGamePlayerView = ({openView}) => {
         backend.send("selectWord", {...selectedWord})
     }
 
+    function renderUserInputCorrectness(userInput) {
+        if (!hasValue(userInput.correct)) {
+            return null
+        } else if (userInput.correct) {
+            return RE.span({style:{color:"green", fontWeight: "bold"}}, "\u2713")
+        } else {
+            return RE.span({style:{color:"red", fontWeight: "bold"}}, "\u2717")
+        }
+    }
+
+    function renderUserInputCompleteness(userInput) {
+        if (userInput && userInput.confirmed || !userInput && beState.phase != 'ENTER_WORD') {
+            return RE.span({style:{color:"green"}}, "\u263A")
+        } else {
+            return null
+        }
+    }
+
     function renderUserInputs() {
         if (beState?.selectedWord?.userInputs) {
-            const tableStyle = {borderCollapse: 'collapse', border: '1px solid lightgray'};
+            const tableStyle = {borderCollapse: 'collapse', border: '1px solid lightgray', fontSize: '25px'};
+            const cellWidth = '40px'
+            const cellHeight = cellWidth
             return RE.Paper({},
                 RE.table({style:{borderCollapse: 'collapse'}},
                     RE.tbody({style:{borderCollapse: 'collapse'}},
-                        RE.tr({},
+                        RE.tr({style: {height: cellHeight}},
                             RE.th({key:'playerNameCol'}, ''),
+                            RE.th({key:'correctness'}, ''),
                             beState.selectedWord.expectedText.map((c,ci) => RE.th(
                                 {key:'char-'+ci, style: tableStyle},
                                 c
-                            ))
+                            )),
+                            RE.th({key:'completeness', style: {...tableStyle, width: cellWidth, textAlign: 'center'}}, renderUserInputCompleteness()),
                         ),
-                        beState.selectedWord.userInputs.map(userInput => RE.tr({key:'user-input' + userInput.playerId},
-                            RE.td({style: {...tableStyle}}, getPlayerById(userInput.playerId).name),
-                            userInput.text.map((c,ci) => RE.td(
-                                {key:'char-'+ci, style: {...tableStyle, width:'20px'}},
-                                c
-                            ))
-                        ))
+                        beState.selectedWord.userInputs.map(userInput => {
+                            return RE.tr({key: 'user-input' + userInput.playerId, style: {height: cellHeight}},
+                                RE.td({style: {...tableStyle}}, getPlayerById(userInput.playerId).name),
+                                RE.td({style: {...tableStyle, width: cellWidth, textAlign: 'center'}}, renderUserInputCorrectness(userInput)),
+                                userInput.text.map((c, ci) => RE.td(
+                                    {key: 'char-' + ci, style: {...tableStyle, width: cellWidth, textAlign: 'center'}},
+                                    c
+                                )),
+                                RE.td({style: {...tableStyle, width: cellWidth, textAlign: 'center'}}, renderUserInputCompleteness(userInput)),
+                            );
+                        })
                     )
                 )
             )
@@ -265,24 +299,28 @@ const WordsGamePlayerView = ({openView}) => {
     }
 
     function isCurrentUserToSelectWord() {
-        return beState.phase == "SELECT_WORD" && beState.playerIdToMove == beState.currentPlayerId
+        return beState.phase == "SELECT_WORD" && isTurnOfCurrentUser()
     }
 
-    function getHighlightStyleForWord({paragraphIndex, wordIndex, word}) {
+    function isTurnOfCurrentUser() {
+        return beState.playerIdToMove == beState.currentPlayerId
+    }
+
+    function getHighlightStyleForWord({paragraphIndex, wordIndex, isActive}) {
         if (highlightActiveWords) {
-            return {backgroundColor: word.active ? "yellow" : ""}
+            return {backgroundColor: isActive ? "yellow" : ""}
         } else if (isCurrentUserToSelectWord()) {
             if (selectedWord && selectedWord.paragraphIndex == paragraphIndex && selectedWord.wordIndex == wordIndex) {
-                return {backgroundColor: word.active ? "dodgerblue" : ""}
+                return {backgroundColor: isActive ? "dodgerblue" : ""}
             } else {
-                return {backgroundColor: word.active ? "cyan" : ""}
+                return {backgroundColor: isActive ? "cyan" : ""}
             }
         }
     }
 
-    function activeWordClicked({paragraphIndex, wordIndex, word}) {
+    function activeWordClicked({paragraphIndex, wordIndex, text}) {
         if (isCurrentUserToSelectWord()) {
-            setSelectedWord({paragraphIndex, wordIndex, text:word.value})
+            setSelectedWord({paragraphIndex, wordIndex, text})
         }
     }
 
@@ -290,33 +328,54 @@ const WordsGamePlayerView = ({openView}) => {
         backend.send("enterWord", {text: enteredWord})
     }
 
+    function renderWordText({key, paragraphIndex, wordIndex, style, isActive, text}) {
+        return RE.span(
+            {
+                key,
+                style: {
+                    outline: '10px',
+                    borderRadius: '10px',
+                    ...getHighlightStyleForWord({paragraphIndex, wordIndex, isActive}),
+                    ...style
+                },
+                className: isActive ? 'active-word' : '',
+                onClick: () => activeWordClicked({paragraphIndex, wordIndex, text})
+            },
+            text
+        )
+    }
+
     function renderWord({paragraphIndex, wordIndex, word}) {
-        if (beState.selectedWord && !hasValue(beState.selectedWord.expectedText)
-            && beState.selectedWord.paragraphIndex==paragraphIndex && beState.selectedWord.wordIndex==wordIndex) {
-            return RE.TextField(
-                {
-                    key: `${paragraphIndex}-${wordIndex}`,
-                    variant: 'outlined',
-                    style: {width: '200px'},
-                    onChange: event => setEnteredWord(event.target.value),
-                    value: enteredWord,
-                    onKeyDown: event => event.nativeEvent.keyCode == 13 ? sendEnteredWord() : null,
-                }
+        const userInput = getUserInputForCurrentPlayer()
+        const key = `${paragraphIndex}-${wordIndex}`;
+        if (beState.phase == 'ENTER_WORD' && !userInput?.confirmed && !isTurnOfCurrentUser()
+            && beState.selectedWord?.paragraphIndex==paragraphIndex && beState.selectedWord?.wordIndex==wordIndex) {
+            return RE.Fragment({key:'fragment-'+key},
+                (hasValue(userInput) && !userInput.confirmed) ? [
+                    renderWordText({
+                        key:'incorrect-word-'+key, paragraphIndex, wordIndex, text: userInput.text.join(''),
+                        isActive: false, style:{color:'red', textDecoration: 'line-through'}
+                    }),
+                    renderWordText({
+                        key:'correct-word-'+key, paragraphIndex, wordIndex,
+                        text: beState.selectedWord.expectedText.join(''),
+                        isActive: false, style:{color:'green'}
+                    }),
+                ] : [],
+                RE.TextField(
+                    {
+                        key: key,
+                        variant: 'outlined',
+                        style: {width: '200px'},
+                        onChange: event => setEnteredWord(event.target.value),
+                        value: enteredWord,
+                        onKeyDown: event => event.nativeEvent.keyCode == 13 ? sendEnteredWord() : null,
+                        autoFocus: true,
+                    }
+                )
             )
         } else {
-            return RE.span(
-                {
-                    key: `${paragraphIndex}-${wordIndex}`,
-                    style: {
-                        outline: '10px',
-                        borderRadius: '10px',
-                        ...getHighlightStyleForWord({paragraphIndex, wordIndex, word}),
-                    },
-                    className: word.active ? 'active-word' : '',
-                    onClick: () => activeWordClicked({paragraphIndex, wordIndex, word})
-                },
-                word.value
-            )
+            return renderWordText({key: key, paragraphIndex, wordIndex, text: word.value, isActive: word.active})
         }
     }
 

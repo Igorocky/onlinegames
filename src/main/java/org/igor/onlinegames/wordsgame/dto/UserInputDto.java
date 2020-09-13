@@ -11,4 +11,5 @@ public class UserInputDto {
     private int playerId;
     private List<String> text;
     private Boolean correct;
+    private boolean confirmed;
 }

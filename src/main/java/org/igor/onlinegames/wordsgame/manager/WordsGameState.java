@@ -429,7 +429,13 @@ public class WordsGameState extends State implements GameState {
     }
 
     private SelectedWord getSelectedWordToShow() {
-        return selectedWord != null ? selectedWord : prevSelectedWord;
+        if (phase == SELECT_WORD) {
+            return prevSelectedWord;
+        } else if (phase == ENTER_WORD) {
+            return selectedWord;
+        } else {
+            return null;
+        }
     }
 
     private WordsGameStateDto createViewOfSelectedWord(WordsPlayer player) {
@@ -480,7 +486,7 @@ public class WordsGameState extends State implements GameState {
                 || player.getPlayerId() == null
                 || playerToMove == player
                 || !selectedWord.getUserInputs().containsKey(player.getPlayerId())
-                || selectedWord.getUserInputs().get(player.getPlayerId()).isConfirmed();
+                || selectedWord.getUserInputs().get(player.getPlayerId()).getCorrect().isPresent();
     }
 
     private List<String> createExpectedTextForPlayer(WordsPlayer player) {
@@ -500,6 +506,7 @@ public class WordsGameState extends State implements GameState {
                                     .playerId(entry.getKey())
                                     .text(stringToTableOfChars(entry.getValue().getText()))
                                     .correct(entry.getValue().getCorrect().orElse(null))
+                                    .confirmed(entry.getValue().isConfirmed())
                                     .build()
                     )
                     .sorted(Comparator.comparing(UserInputDto::getPlayerId))
