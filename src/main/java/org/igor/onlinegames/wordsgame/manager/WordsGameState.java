@@ -98,6 +98,7 @@ public class WordsGameState extends State implements GameState {
     private WordsPlayer playerToMove;
     private String textToLearn;
     private List<List<TextToken>> words;
+    private SelectedWord prevSelectedWord;
     private SelectedWord selectedWord;
 
     @Override
@@ -244,6 +245,13 @@ public class WordsGameState extends State implements GameState {
     public synchronized void selectWord(WebSocketSession session, int paragraphIndex, int wordIndex, String text) {
         if (phase == SELECT_WORD) {
             executeOnBehalfOfPlayer(session, player -> selectWord(player, paragraphIndex, wordIndex, text));
+        }
+    }
+
+    @RpcMethod
+    public synchronized void enterWord(WebSocketSession session, String text) {
+        if (phase == ENTER_WORD) {
+            executeOnBehalfOfPlayer(session, player -> enterWord(player, text));
         }
     }
 
@@ -420,7 +428,12 @@ public class WordsGameState extends State implements GameState {
         }
     }
 
+    private SelectedWord getSelectedWordToShow() {
+        return selectedWord != null ? selectedWord : prevSelectedWord;
+    }
+
     private WordsGameStateDto createViewOfSelectedWord(WordsPlayer player) {
+        final SelectedWord selectedWord = getSelectedWordToShow();
         return WordsGameStateDto.builder()
                 .phase(phase)
                 .selectedWord(
@@ -436,6 +449,7 @@ public class WordsGameState extends State implements GameState {
     }
 
     private List<String> stringToTableOfChars(String str) {
+        final SelectedWord selectedWord = getSelectedWordToShow();
         if (selectedWord != null) {
             final int listLength = Stream.concat(
                     Stream.of(selectedWord.getText()),
@@ -460,16 +474,26 @@ public class WordsGameState extends State implements GameState {
         }
     }
 
+    private boolean canShowSelectedWordInfoToPlayer(WordsPlayer player) {
+        final SelectedWord selectedWord = getSelectedWordToShow();
+        return selectedWord == null
+                || player.getPlayerId() == null
+                || playerToMove == player
+                || !selectedWord.getUserInputs().containsKey(player.getPlayerId())
+                || selectedWord.getUserInputs().get(player.getPlayerId()).isConfirmed();
+    }
+
     private List<String> createExpectedTextForPlayer(WordsPlayer player) {
-        if (playerToMove == player || selectedWord.getUserInputs().get(player.getPlayerId()).getCorrect().orElse(false)) {
-            return stringToTableOfChars(selectedWord.getText());
+        if (canShowSelectedWordInfoToPlayer(player)) {
+            return stringToTableOfChars(getSelectedWordToShow().getText());
         } else {
             return null;
         }
     }
 
     private List<UserInputDto> createUserInputsDtoForPlayer(WordsPlayer player) {
-        if (playerToMove == player || selectedWord.getUserInputs().get(player.getPlayerId()).getCorrect().orElse(false)) {
+        if (canShowSelectedWordInfoToPlayer(player)) {
+            final SelectedWord selectedWord = getSelectedWordToShow();
             return selectedWord.getUserInputs().entrySet().stream()
                     .map(entry ->
                             UserInputDto.builder()
@@ -499,6 +523,48 @@ public class WordsGameState extends State implements GameState {
                 .map(this::extractUserIdFromSession)
                 .distinct()
                 .count();
+    }
+
+    private void enterWord(WordsPlayer player, String text) {
+        if (phase == ENTER_WORD && playerToMove != player && player.getPlayerId() != null) {
+            if (StringUtils.isBlank(text)) {
+                player.sendMessageToFe(new WordsGameErrorDto(
+                        "StringUtils.isBlank(text)"
+                ));
+                return;
+            }
+            final UserInput userInput = selectedWord.getUserInputs().get(player.getPlayerId());
+            if (userInput.getCorrect().isPresent() && userInput.isConfirmed()) {
+                player.sendMessageToFe(new WordsGameErrorDto(
+                        "userInput.getCorrect().isPresent() && userInput.isConfirmed()"
+                ));
+                return;
+            }
+            String userInputTextUpperCase = StringUtils.trimToEmpty(text).toUpperCase();
+            if (!userInput.getCorrect().isPresent()) {
+                userInput.setCorrect(Optional.of(selectedWord.getTextUpperCase().equals(userInputTextUpperCase)));
+                userInput.setText(text.trim());
+                if (userInput.getCorrect().get()) {
+                    userInput.setConfirmed(true);
+                }
+            } else if (!userInput.getCorrect().get() && !userInput.isConfirmed()) {
+                userInput.setConfirmed(selectedWord.getTextUpperCase().equals(userInputTextUpperCase));
+            }
+            if (!selectedWord.getUserInputs().entrySet().stream()
+                    .map(e -> e.getValue())
+                    .map(UserInput::isConfirmed)
+                    .filter(c -> !c)
+                    .findAny()
+                    .isPresent()) {
+                prevSelectedWord = selectedWord;
+                selectedWord = null;
+                phase = SELECT_WORD;
+                playerToMove = getNextPlayerToMove();
+                broadcastPhaseChange();
+            } else {
+                broadcastSelectedWord();
+            }
+        }
     }
 
     private void selectWord(WordsPlayer player, int paragraphIndex, int wordIndex, String text) {
@@ -532,7 +598,8 @@ public class WordsGameState extends State implements GameState {
             selectedWord = SelectedWord.builder()
                     .paragraphIndex(paragraphIndex)
                     .wordIndex(wordIndex)
-                    .text(text)
+                    .text(StringUtils.trimToEmpty(text))
+                    .textUpperCase(StringUtils.trimToEmpty(text).toUpperCase())
                     .userInputs(
                             players.stream()
                             .filter(p -> p != player)
@@ -560,6 +627,15 @@ public class WordsGameState extends State implements GameState {
 
     private void broadcastSelectedWord() {
         sessions.forEach(session -> sendMessageToFe(session, createViewOfSelectedWord(sessionToPlayer(session))));
+    }
+
+    private void broadcastPhaseChange() {
+        sessions.forEach(session -> sendMessageToFe(
+                session,
+                createViewOfCurrentState(sessionToPlayer(session))
+                .withTextToLearn(null)
+                .withWords(null)
+        ));
     }
 
     private List<WordsPlayerDto> createPlayersDto(WordsPlayer viewer, List<WordsPlayer> players) {

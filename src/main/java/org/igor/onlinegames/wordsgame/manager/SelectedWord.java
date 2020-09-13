@@ -11,5 +11,6 @@ public class SelectedWord {
     private int paragraphIndex;
     private int wordIndex;
     private String text;
+    private String textUpperCase;
     private Map<Integer,UserInput> userInputs;
 }

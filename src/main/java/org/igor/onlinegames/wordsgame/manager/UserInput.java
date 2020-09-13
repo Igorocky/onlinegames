@@ -10,4 +10,5 @@ import java.util.Optional;
 public class UserInput {
     private String text;
     private Optional<Boolean> correct;
+    private boolean confirmed;
 }

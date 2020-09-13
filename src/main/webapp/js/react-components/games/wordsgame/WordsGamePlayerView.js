@@ -32,6 +32,7 @@ const WordsGamePlayerView = ({openView}) => {
     const [highlightActiveWords, setHighlightActiveWords] = useState(false)
     const [newTextToLearn, setNewTextToLearn] = useState(null)
     const [selectedWord, setSelectedWord] = useState(null)
+    const [enteredWord, setEnteredWord] = useState('')
 
     useEffect(() => {
         if (!hasValue(prevBeState) && hasValue(beState)) {
@@ -41,8 +42,15 @@ const WordsGamePlayerView = ({openView}) => {
         }
     }, [beState])
 
+    useEffect(() => {
+        setSelectedWord(null)
+        setEnteredWord('')
+    }, [beState?.phase])
+
     function onMessageFromBackend(msg) {
         if (msg.type == "state") {
+            // console.log('beState')
+            // console.log(JSON.stringify(msg))
             setPasscode(null)
             setBeState(old => ({...old, ...msg}))
         } else if (msg.type == "msg:PlayerNameWasSet") {
@@ -233,20 +241,22 @@ const WordsGamePlayerView = ({openView}) => {
             const tableStyle = {borderCollapse: 'collapse', border: '1px solid lightgray'};
             return RE.Paper({},
                 RE.table({style:{borderCollapse: 'collapse'}},
-                    RE.tr({},
-                        RE.th({key:'playerNameCol'}, ''),
-                        beState.selectedWord.expectedText.map((c,ci) => RE.th(
-                            {key:'char-'+ci, style: tableStyle},
-                            c
+                    RE.tbody({style:{borderCollapse: 'collapse'}},
+                        RE.tr({},
+                            RE.th({key:'playerNameCol'}, ''),
+                            beState.selectedWord.expectedText.map((c,ci) => RE.th(
+                                {key:'char-'+ci, style: tableStyle},
+                                c
+                            ))
+                        ),
+                        beState.selectedWord.userInputs.map(userInput => RE.tr({key:'user-input' + userInput.playerId},
+                            RE.td({style: {...tableStyle}}, getPlayerById(userInput.playerId).name),
+                            userInput.text.map((c,ci) => RE.td(
+                                {key:'char-'+ci, style: {...tableStyle, width:'20px'}},
+                                c
+                            ))
                         ))
-                    ),
-                    beState.selectedWord.userInputs.map(userInput => RE.tr({key:'user-input' + userInput.playerId},
-                        RE.td({style: {...tableStyle}}, getPlayerById(userInput.playerId).name),
-                        userInput.text.map((c,ci) => RE.td(
-                            {key:'char-'+ci, style: {...tableStyle, width:'20px'}},
-                            c
-                        ))
-                    ))
+                    )
                 )
             )
         } else {
@@ -276,6 +286,40 @@ const WordsGamePlayerView = ({openView}) => {
         }
     }
 
+    function sendEnteredWord() {
+        backend.send("enterWord", {text: enteredWord})
+    }
+
+    function renderWord({paragraphIndex, wordIndex, word}) {
+        if (beState.selectedWord && !hasValue(beState.selectedWord.expectedText)
+            && beState.selectedWord.paragraphIndex==paragraphIndex && beState.selectedWord.wordIndex==wordIndex) {
+            return RE.TextField(
+                {
+                    key: `${paragraphIndex}-${wordIndex}`,
+                    variant: 'outlined',
+                    style: {width: '200px'},
+                    onChange: event => setEnteredWord(event.target.value),
+                    value: enteredWord,
+                    onKeyDown: event => event.nativeEvent.keyCode == 13 ? sendEnteredWord() : null,
+                }
+            )
+        } else {
+            return RE.span(
+                {
+                    key: `${paragraphIndex}-${wordIndex}`,
+                    style: {
+                        outline: '10px',
+                        borderRadius: '10px',
+                        ...getHighlightStyleForWord({paragraphIndex, wordIndex, word}),
+                    },
+                    className: word.active ? 'active-word' : '',
+                    onClick: () => activeWordClicked({paragraphIndex, wordIndex, word})
+                },
+                word.value
+            )
+        }
+    }
+
     function renderText() {
         if (beState.words) {
             if (hasValue(newTextToLearn)) {
@@ -296,19 +340,7 @@ const WordsGamePlayerView = ({openView}) => {
             } else {
                 return RE.Container.col.top.left({}, {style:{marginBottom:"20px"}},
                     beState.words.map((p, pi) => RE.Typography({key:pi, variant:"h5"},
-                        p.filter(w=>!w.meta).map((w, wi) => RE.span(
-                            {
-                                key: wi,
-                                style: {
-                                    outline: '10px',
-                                    borderRadius: '10px',
-                                    ...getHighlightStyleForWord({paragraphIndex:pi, wordIndex: wi, word:w}),
-                                },
-                                className: w.active ? 'active-word' : '',
-                                onClick: () => activeWordClicked({paragraphIndex:pi, wordIndex: wi, word:w})
-                            },
-                            w.value
-                        ))
+                        p.filter(w=>!w.meta).map((w, wi) => renderWord({paragraphIndex:pi, wordIndex:wi, word: w}))
                     ))
                 )
             }
