@@ -64,6 +64,7 @@ const RE = {
     span: reFactory('span'),
     table: reFactory('table'),
     tbody: reFactory('tbody'),
+    th: reFactory('th'),
     tr: reFactory('tr'),
     td: reFactory('td'),
     AppBar: reFactory(MaterialUI.AppBar),

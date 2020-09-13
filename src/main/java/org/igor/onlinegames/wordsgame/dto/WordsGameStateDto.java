@@ -16,7 +16,7 @@ public class WordsGameStateDto implements WordsGameDto {
     private WordsGamePhase phase;
     private Long numberOfWaitingPlayers;
     private List<String> namesOfWaitingPlayers;
-    private boolean currentUserIsGameOwner;
+    private Boolean currentUserIsGameOwner;
     private String currentPlayerName;
     private Integer timerSeconds;
     private List<WordsPlayerDto> players;
@@ -24,4 +24,5 @@ public class WordsGameStateDto implements WordsGameDto {
     private Integer playerIdToMove;
     private String textToLearn;
     private List<List<TextToken>> words;
+    private SelectedWordDto selectedWord;
 }

@@ -31,6 +31,7 @@ const WordsGamePlayerView = ({openView}) => {
     })
     const [highlightActiveWords, setHighlightActiveWords] = useState(false)
     const [newTextToLearn, setNewTextToLearn] = useState(null)
+    const [selectedWord, setSelectedWord] = useState(null)
 
     useEffect(() => {
         if (!hasValue(prevBeState) && hasValue(beState)) {
@@ -105,14 +106,24 @@ const WordsGamePlayerView = ({openView}) => {
                     ) : null,
                 discardDialogOpened?renderDiscardDialog():null,
             )
-        } else if (beState.phase == "SELECT_WORD" || beState.phase == "ENTER_WORD") {
+        } else if (beState.phase == "SELECT_WORD") {
             let title
             if (!hasValue(beState.currentPlayerId)) {
                 title = RE.Fragment({}, "You are watching this game.")
             } else if (beState.playerIdToMove == beState.currentPlayerId) {
-                title = RE.Fragment({}, "Your turn ")
+                title = RE.Fragment({}, "Select a word")
             } else {
-                title = `Waiting for your opponent${beState.players.length>2?'s':''} to respond.`
+                title = `Waiting for ${getPlayerById(beState.playerIdToMove).name} to select a word`
+            }
+            return RE.Typography({variant:"h6"}, title)
+        } else if (beState.phase == "ENTER_WORD") {
+            let title
+            if (!hasValue(beState.currentPlayerId)) {
+                title = RE.Fragment({}, "You are watching this game.")
+            } else if (beState.playerIdToMove == beState.currentPlayerId) {
+                title = RE.Fragment({}, `Waiting for your opponent${beState.players.length>2?'s':''} to respond.`)
+            } else {
+                title = `Enter the hidden word`
             }
             return RE.Typography({variant:"h6"}, title)
         } else if (beState.phase == "FINISHED" || beState.phase == "DISCARDED") {
@@ -129,7 +140,11 @@ const WordsGamePlayerView = ({openView}) => {
     }
 
     function getCurrentPlayer() {
-        return beState.players.find(player => player.playerId == beState.currentPlayerId)
+        return getPlayerById(beState.currentPlayerId)
+    }
+
+    function getPlayerById(playerId) {
+        return beState.players.find(player => player.playerId == playerId)
     }
 
     function renderPageContent() {
@@ -151,6 +166,7 @@ const WordsGamePlayerView = ({openView}) => {
     function renderField() {
         return RE.Container.col.top.left({},{style:{marginBottom:"20px"}},
             renderFieldButtons(),
+            renderUserInputs(),
             renderText()
         )
     }
@@ -165,13 +181,13 @@ const WordsGamePlayerView = ({openView}) => {
                     style:{},
                     onClick: () => setHighlightActiveWords(old => !old),
                 },
-                RE.Icon({fontSize:"large"}, 'zoom_in')
+                RE.Icon({fontSize:"large"}, 'highlight')
             ),
             RE.Button({
                     style:{},
                     onClick: goToEditMode,
                 },
-                RE.Icon({fontSize:"large"}, 'zoom_out')
+                RE.Icon({fontSize:"large"}, 'edit')
             ),
             RE.Button({
                     style:{},
@@ -193,12 +209,71 @@ const WordsGamePlayerView = ({openView}) => {
                     onClick: goToGameSelector,
                 },
                 RE.Icon({fontSize:"large"}, 'home')
+            ),
+            RE.Button({
+                    style:{},
+                    disabled: !(isCurrentUserToSelectWord() && selectedWord),
+                    onClick: sendSelectedWord,
+                },
+                RE.Icon({fontSize:"large"}, 'done_outline')
             )
         )
     }
 
     function saveNewTextToLearn() {
         backend.send("setTextToLearn", {newTextToLearn})
+    }
+
+    function sendSelectedWord() {
+        backend.send("selectWord", {...selectedWord})
+    }
+
+    function renderUserInputs() {
+        if (beState?.selectedWord?.userInputs) {
+            const tableStyle = {borderCollapse: 'collapse', border: '1px solid lightgray'};
+            return RE.Paper({},
+                RE.table({style:{borderCollapse: 'collapse'}},
+                    RE.tr({},
+                        RE.th({key:'playerNameCol'}, ''),
+                        beState.selectedWord.expectedText.map((c,ci) => RE.th(
+                            {key:'char-'+ci, style: tableStyle},
+                            c
+                        ))
+                    ),
+                    beState.selectedWord.userInputs.map(userInput => RE.tr({key:'user-input' + userInput.playerId},
+                        RE.td({style: {...tableStyle}}, getPlayerById(userInput.playerId).name),
+                        userInput.text.map((c,ci) => RE.td(
+                            {key:'char-'+ci, style: {...tableStyle, width:'20px'}},
+                            c
+                        ))
+                    ))
+                )
+            )
+        } else {
+            return null
+        }
+    }
+
+    function isCurrentUserToSelectWord() {
+        return beState.phase == "SELECT_WORD" && beState.playerIdToMove == beState.currentPlayerId
+    }
+
+    function getHighlightStyleForWord({paragraphIndex, wordIndex, word}) {
+        if (highlightActiveWords) {
+            return {backgroundColor: word.active ? "yellow" : ""}
+        } else if (isCurrentUserToSelectWord()) {
+            if (selectedWord && selectedWord.paragraphIndex == paragraphIndex && selectedWord.wordIndex == wordIndex) {
+                return {backgroundColor: word.active ? "dodgerblue" : ""}
+            } else {
+                return {backgroundColor: word.active ? "cyan" : ""}
+            }
+        }
+    }
+
+    function activeWordClicked({paragraphIndex, wordIndex, word}) {
+        if (isCurrentUserToSelectWord()) {
+            setSelectedWord({paragraphIndex, wordIndex, text:word.value})
+        }
     }
 
     function renderText() {
@@ -224,7 +299,13 @@ const WordsGamePlayerView = ({openView}) => {
                         p.filter(w=>!w.meta).map((w, wi) => RE.span(
                             {
                                 key: wi,
-                                style: {backgroundColor: (highlightActiveWords && w.active) ? "yellow" : ""}
+                                style: {
+                                    outline: '10px',
+                                    borderRadius: '10px',
+                                    ...getHighlightStyleForWord({paragraphIndex:pi, wordIndex: wi, word:w}),
+                                },
+                                className: w.active ? 'active-word' : '',
+                                onClick: () => activeWordClicked({paragraphIndex:pi, wordIndex: wi, word:w})
                             },
                             w.value
                         ))

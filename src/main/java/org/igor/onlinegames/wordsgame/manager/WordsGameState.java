@@ -10,6 +10,8 @@ import org.igor.onlinegames.model.GameState;
 import org.igor.onlinegames.model.UserSessionData;
 import org.igor.onlinegames.rpc.RpcMethod;
 import org.igor.onlinegames.websocket.State;
+import org.igor.onlinegames.wordsgame.dto.SelectedWordDto;
+import org.igor.onlinegames.wordsgame.dto.UserInputDto;
 import org.igor.onlinegames.wordsgame.dto.WordsGameErrorDto;
 import org.igor.onlinegames.wordsgame.dto.WordsGameIncorrectPasscodeErrorDto;
 import org.igor.onlinegames.wordsgame.dto.WordsGameNewTextWasSavedMsgDto;
@@ -31,6 +33,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +51,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.igor.onlinegames.common.OnlinegamesUtils.nullSafeGetter;
 import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.DISCARDED;
@@ -93,6 +98,7 @@ public class WordsGameState extends State implements GameState {
     private WordsPlayer playerToMove;
     private String textToLearn;
     private List<List<TextToken>> words;
+    private SelectedWord selectedWord;
 
     @Override
     protected void init(JsonNode args) {
@@ -235,9 +241,9 @@ public class WordsGameState extends State implements GameState {
     }
 
     @RpcMethod
-    public synchronized void selectWord(WebSocketSession session) {
+    public synchronized void selectWord(WebSocketSession session, int paragraphIndex, int wordIndex, String text) {
         if (phase == SELECT_WORD) {
-            executeOnBehalfOfPlayer(session, player -> selectWord(player));
+            executeOnBehalfOfPlayer(session, player -> selectWord(player, paragraphIndex, wordIndex, text));
         }
     }
 
@@ -409,7 +415,73 @@ public class WordsGameState extends State implements GameState {
                     .playerIdToMove(nullSafeGetter(playerToMove, WordsPlayer::getPlayerId))
                     .textToLearn(textToLearn)
                     .words(words)
+                    .selectedWord(createViewOfSelectedWord(player).getSelectedWord())
                     .build();
+        }
+    }
+
+    private WordsGameStateDto createViewOfSelectedWord(WordsPlayer player) {
+        return WordsGameStateDto.builder()
+                .phase(phase)
+                .selectedWord(
+                        selectedWord == null ? null
+                                : SelectedWordDto.builder()
+                                .paragraphIndex(selectedWord.getParagraphIndex())
+                                .wordIndex(selectedWord.getWordIndex())
+                                .expectedText(createExpectedTextForPlayer(player))
+                                .userInputs(createUserInputsDtoForPlayer(player))
+                                .build()
+                )
+                .build();
+    }
+
+    private List<String> stringToTableOfChars(String str) {
+        if (selectedWord != null) {
+            final int listLength = Stream.concat(
+                    Stream.of(selectedWord.getText()),
+                    selectedWord.getUserInputs().entrySet().stream()
+                            .map(e -> e.getValue())
+                            .map(UserInput::getText)
+            )
+                    .map(String::length)
+                    .max(Integer::compareTo)
+                    .get();
+            final ArrayList<String> result = new ArrayList<>(listLength);
+            for (int i = 0; i < listLength; i++) {
+                if (i < str.length()) {
+                    result.add(str.substring(i, i + 1));
+                } else {
+                    result.add("");
+                }
+            }
+            return result;
+        } else {
+            return Collections.emptyList();
+        }
+    }
+
+    private List<String> createExpectedTextForPlayer(WordsPlayer player) {
+        if (playerToMove == player || selectedWord.getUserInputs().get(player.getPlayerId()).getCorrect().orElse(false)) {
+            return stringToTableOfChars(selectedWord.getText());
+        } else {
+            return null;
+        }
+    }
+
+    private List<UserInputDto> createUserInputsDtoForPlayer(WordsPlayer player) {
+        if (playerToMove == player || selectedWord.getUserInputs().get(player.getPlayerId()).getCorrect().orElse(false)) {
+            return selectedWord.getUserInputs().entrySet().stream()
+                    .map(entry ->
+                            UserInputDto.builder()
+                                    .playerId(entry.getKey())
+                                    .text(stringToTableOfChars(entry.getValue().getText()))
+                                    .correct(entry.getValue().getCorrect().orElse(null))
+                                    .build()
+                    )
+                    .sorted(Comparator.comparing(UserInputDto::getPlayerId))
+                    .collect(Collectors.toList());
+        } else {
+            return null;
         }
     }
 
@@ -429,11 +501,52 @@ public class WordsGameState extends State implements GameState {
                 .count();
     }
 
-    private void selectWord(WordsPlayer player) {
-        if (phase == SELECT_WORD) {
-            if (playerToMove != player) {
-                player.sendMessageToFe(new WordsGameErrorDto("It's not your turn."));
+    private void selectWord(WordsPlayer player, int paragraphIndex, int wordIndex, String text) {
+        if (phase == SELECT_WORD && playerToMove == player && selectedWord == null) {
+            if (paragraphIndex < 0 || paragraphIndex >= words.size()) {
+                player.sendMessageToFe(new WordsGameErrorDto(
+                        "paragraphIndex < 0 || paragraphIndex >= words.size()"
+                ));
+                return;
             }
+            List<TextToken> paragraph = words.get(paragraphIndex);
+            if (wordIndex < 0 || wordIndex >= paragraph.size()) {
+                player.sendMessageToFe(new WordsGameErrorDto(
+                        "wordIndex < 0 || wordIndex >= paragraph.size()"
+                ));
+                return;
+            }
+            final TextToken selectedWordToken = paragraph.get(wordIndex);
+            if (selectedWordToken.getActive() == null || !selectedWordToken.getActive()) {
+                player.sendMessageToFe(new WordsGameErrorDto(
+                        "Selected word is not active"
+                ));
+                return;
+            }
+            if (!selectedWordToken.getValue().equals(text)) {
+                player.sendMessageToFe(new WordsGameErrorDto(
+                        "!selectedWordToken.getValue().equals(text)"
+                ));
+                return;
+            }
+            selectedWord = SelectedWord.builder()
+                    .paragraphIndex(paragraphIndex)
+                    .wordIndex(wordIndex)
+                    .text(text)
+                    .userInputs(
+                            players.stream()
+                            .filter(p -> p != player)
+                                    .collect(Collectors.toMap(
+                                            p -> p.getPlayerId(),
+                                            p -> UserInput.builder()
+                                                    .text("")
+                                                    .correct(Optional.empty())
+                                                    .build()
+                                    ))
+                    )
+                    .build();
+            phase = ENTER_WORD;
+            broadcastSelectedWord();
         }
     }
 
@@ -443,6 +556,10 @@ public class WordsGameState extends State implements GameState {
 
     private void broadcastGameState() {
         sessions.forEach(session -> sendMessageToFe(session, createViewOfCurrentState(sessionToPlayer(session))));
+    }
+
+    private void broadcastSelectedWord() {
+        sessions.forEach(session -> sendMessageToFe(session, createViewOfSelectedWord(sessionToPlayer(session))));
     }
 
     private List<WordsPlayerDto> createPlayersDto(WordsPlayer viewer, List<WordsPlayer> players) {
@@ -558,7 +675,8 @@ public class WordsGameState extends State implements GameState {
 
     @Override
     public synchronized String getShortDescription() {
-        return "W " + textToLearn.length() + (timerSeconds == null ? "" : " / T " + timerSeconds);
+        return "W " + words.stream().map(List::stream).map(Stream::count).reduce(0l, Long::sum)
+                + (timerSeconds == null ? "" : " / T " + timerSeconds);
     }
 
     @Override

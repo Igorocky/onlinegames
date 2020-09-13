@@ -27,21 +27,6 @@
     background-color: rgb(150, 150, 150);
 }
 
-.NodeCommonView-item {
-    width: 100%;
-}
-.NodeCommonView-item .NodeChildren-root {
-    width: 100%;
-}
-.NodeCommonView-item .NodeChildren-root .NodeChildren-item {
-    width: 100%;
-}
-.NodeCommonView-item .NodeChildren-root .NodeChildren-item .NodeChildren-inner-root {
-    width: 100%;
-}
-.NodeCommonView-item .NodeChildren-root .NodeChildren-item .NodeChildren-inner-root .NodeChildren-inner-item:nth-child(2) {
-    width: 100%;
-}
-.NodeCommonView-item .NodeChildren-root .NodeChildren-item .NodeChildren-inner-root .NodeChildren-inner-item:nth-child(2) .FolderComponent-root {
-    width: 100%;
+.active-word:hover {
+    cursor: pointer;
 }
