@@ -509,7 +509,7 @@ const WordsGamePlayerView = ({openView}) => {
     function renderWord({paragraphIndex, wordIndex, word}) {
         const userInput = getUserInputForCurrentPlayer()
         const key = `${paragraphIndex}-${wordIndex}`;
-        if (beState.phase == 'ENTER_WORD' && !userInput?.confirmed && !isTurnOfCurrentUser()
+        if (hasValue(beState.currentPlayerId) && beState.phase == 'ENTER_WORD' && !userInput?.confirmed && !isTurnOfCurrentUser()
             && beState.selectedWord?.paragraphIndex==paragraphIndex && beState.selectedWord?.wordIndex==wordIndex) {
             return RE.Fragment({key:'fragment-'+key},
                 (hasValue(userInput) && !userInput.confirmed) ? [
