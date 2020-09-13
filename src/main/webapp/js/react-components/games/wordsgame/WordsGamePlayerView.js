@@ -59,6 +59,12 @@ const WordsGamePlayerView = ({openView}) => {
     }, [beState])
 
     useEffect(() => {
+        if (soundsEnabled && beState?.phase == 'ENTER_WORD' && !isTurnOfCurrentUser()) {
+            playAudio(audioUrl('on-move.mp3'))
+        }
+    }, [beState?.phase])
+
+    useEffect(() => {
         setSelectedWord(null)
         setEnteredWord('')
     }, [beState?.phase])

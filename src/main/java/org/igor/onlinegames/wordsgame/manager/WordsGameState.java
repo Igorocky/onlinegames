@@ -68,7 +68,6 @@ public class WordsGameState extends State implements GameState {
 
     // TODO: 13.09.2020 finish game button
     // TODO: 13.09.2020 timer
-    // TODO: 13.09.2020 sounds
 
     private static final String PLAYER_STATE = "playerState";
     public static final int MAX_NUMBER_OF_PLAYERS = 10;
