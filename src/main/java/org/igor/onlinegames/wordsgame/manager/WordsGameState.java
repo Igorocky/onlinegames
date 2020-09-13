@@ -69,7 +69,6 @@ public class WordsGameState extends State implements GameState {
     // TODO: 13.09.2020 translation
     // TODO: 13.09.2020 finish game button
     // TODO: 13.09.2020 timer
-    // TODO: 13.09.2020 show selected word in phase ENTER_WORD
 
     private static final String PLAYER_STATE = "playerState";
     public static final int MAX_NUMBER_OF_PLAYERS = 10;
@@ -495,7 +494,8 @@ public class WordsGameState extends State implements GameState {
 
     private boolean canShowSelectedWordInfoToPlayer(WordsPlayer player) {
         final SelectedWord selectedWord = getSelectedWordToShow();
-        return selectedWord == null
+        return phase == SELECT_WORD
+                || selectedWord == null
                 || player.getPlayerId() == null
                 || playerToMove == player
                 || !selectedWord.getUserInputs().containsKey(player.getPlayerId())

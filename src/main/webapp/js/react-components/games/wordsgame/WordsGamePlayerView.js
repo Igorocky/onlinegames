@@ -201,6 +201,7 @@ const WordsGamePlayerView = ({openView}) => {
             ),
             RE.Button({
                     style:{},
+                    disabled: !beState.currentUserIsGameOwner,
                     onClick: goToEditMode,
                 },
                 RE.Icon({fontSize:"large"}, 'edit')
@@ -288,7 +289,15 @@ const WordsGamePlayerView = ({openView}) => {
                         beState.selectedWord.userInputs.map(userInput => {
                             return RE.tr({key: 'user-input' + userInput.playerId, style: {height: cellHeight}},
                                 RE.td({style: {...tableStyle}}, renderUserScore(userInput)),
-                                RE.td({style: {...tableStyle}}, getPlayerById(userInput.playerId).name),
+                                RE.td(
+                                    {
+                                        style: {
+                                            ...tableStyle,
+                                            ...(userInput.playerId == beState.currentPlayerId ? {textDecoration: 'underline', fontWeight: 'bold'} : {})
+                                        }
+                                    },
+                                    getPlayerById(userInput.playerId).name
+                                ),
                                 RE.td({style: {...tableStyle, width: cellWidth, textAlign: 'center'}}, renderUserInputCorrectness(userInput)),
                                 userInput.text.map((c, ci) => RE.td(
                                     {key: 'char-' + ci, style: {...tableStyle, width: cellWidth, textAlign: 'center'}},
@@ -314,14 +323,44 @@ const WordsGamePlayerView = ({openView}) => {
     }
 
     function getHighlightStyleForWord({paragraphIndex, wordIndex, isActive}) {
+        if (!isActive) {
+            return {}
+        } else {
+            const highlightedWordColor = 'yellow'
+            const availableForSelectionWordColor = 'cyan'
+            const selectedWordColor = 'dodgerblue'
+            let backgroundColor
+            if (highlightActiveWords) {
+                backgroundColor = highlightedWordColor
+            } else if (beState.phase == 'SELECT_WORD') {
+                if (isCurrentUserToSelectWord()) {
+                    if (selectedWord?.paragraphIndex == paragraphIndex && selectedWord?.wordIndex == wordIndex) {
+                        backgroundColor = selectedWordColor
+                    } else {
+                        backgroundColor = availableForSelectionWordColor
+                    }
+                } else {
+                    backgroundColor = ''
+                }
+            } else if (beState.phase == 'ENTER_WORD') {
+                if (beState.selectedWord?.userInputs
+                    && beState.selectedWord?.paragraphIndex == paragraphIndex
+                    && beState.selectedWord?.wordIndex == wordIndex) {
+                    backgroundColor = selectedWordColor
+                } else {
+                    backgroundColor = ''
+                }
+            }
+            return {backgroundColor}
+        }
+
         if (highlightActiveWords) {
             return {backgroundColor: isActive ? "yellow" : ""}
-        } else if (isCurrentUserToSelectWord()) {
-            if (selectedWord && selectedWord.paragraphIndex == paragraphIndex && selectedWord.wordIndex == wordIndex) {
-                return {backgroundColor: isActive ? "dodgerblue" : ""}
-            } else {
-                return {backgroundColor: isActive ? "cyan" : ""}
-            }
+        } else if (selectedWord?.paragraphIndex == paragraphIndex && selectedWord?.wordIndex == wordIndex
+            || beState.selectedWord?.paragraphIndex == paragraphIndex && beState.selectedWord?.wordIndex == wordIndex) {
+            return {backgroundColor: isActive ? "dodgerblue" : ""}
+        } else {
+            return {backgroundColor: isActive ? (beState.pahase == 'SELECT_WORD' ? "cyan" : '') : ""}
         }
     }
 
@@ -360,11 +399,11 @@ const WordsGamePlayerView = ({openView}) => {
             return RE.Fragment({key:'fragment-'+key},
                 (hasValue(userInput) && !userInput.confirmed) ? [
                     renderWordText({
-                        key:'incorrect-word-'+key, paragraphIndex, wordIndex, text: userInput.text.join(''),
+                        key:'incorrect-word-'+key, paragraphIndex:-1, wordIndex:-1, text: userInput.text.join(''),
                         isActive: false, style:{color:'red', textDecoration: 'line-through'}
                     }),
                     renderWordText({
-                        key:'correct-word-'+key, paragraphIndex, wordIndex,
+                        key:'correct-word-'+key, paragraphIndex:-1, wordIndex:-1,
                         text: beState.selectedWord.expectedText.join(''),
                         isActive: false, style:{color:'green'}
                     }),
