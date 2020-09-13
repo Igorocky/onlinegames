@@ -21,6 +21,7 @@ public class WordsPlayer {
     private final boolean gameOwner;
     private final Integer playerId;
     private String name;
+    private WordsPlayerScore score;
     private final Consumer<WordsGameDto> feMessageSender;
 
     public <T> T ifGameOwner(Supplier<T> exp) {

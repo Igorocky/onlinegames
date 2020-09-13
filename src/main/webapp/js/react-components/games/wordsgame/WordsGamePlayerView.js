@@ -244,6 +244,11 @@ const WordsGamePlayerView = ({openView}) => {
         backend.send("selectWord", {...selectedWord})
     }
 
+    function renderUserScore(userInput) {
+        const player = getPlayerById(userInput.playerId)
+        return player.score.numOfCorrectWords + '/' + player.score.numOfAllWords
+    }
+
     function renderUserInputCorrectness(userInput) {
         if (!hasValue(userInput.correct)) {
             return null
@@ -271,8 +276,9 @@ const WordsGamePlayerView = ({openView}) => {
                 RE.table({style:{borderCollapse: 'collapse'}},
                     RE.tbody({style:{borderCollapse: 'collapse'}},
                         RE.tr({style: {height: cellHeight}},
-                            RE.th({key:'playerNameCol'}, ''),
-                            RE.th({key:'correctness'}, ''),
+                            RE.th({key:'playerScoreCol'}),
+                            RE.th({key:'playerNameCol'}),
+                            RE.th({key:'correctness'}),
                             beState.selectedWord.expectedText.map((c,ci) => RE.th(
                                 {key:'char-'+ci, style: tableStyle},
                                 c
@@ -281,6 +287,7 @@ const WordsGamePlayerView = ({openView}) => {
                         ),
                         beState.selectedWord.userInputs.map(userInput => {
                             return RE.tr({key: 'user-input' + userInput.playerId, style: {height: cellHeight}},
+                                RE.td({style: {...tableStyle}}, renderUserScore(userInput)),
                                 RE.td({style: {...tableStyle}}, getPlayerById(userInput.playerId).name),
                                 RE.td({style: {...tableStyle, width: cellWidth, textAlign: 'center'}}, renderUserInputCorrectness(userInput)),
                                 userInput.text.map((c, ci) => RE.td(

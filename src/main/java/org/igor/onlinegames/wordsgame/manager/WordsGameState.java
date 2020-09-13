@@ -3,6 +3,7 @@ package org.igor.onlinegames.wordsgame.manager;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.igor.onlinegames.common.GamePlayersCounts;
 import org.igor.onlinegames.common.OnlinegamesUtils;
 import org.igor.onlinegames.exceptions.OnlinegamesException;
@@ -22,6 +23,7 @@ import org.igor.onlinegames.wordsgame.dto.WordsGamePlayerNameIsOccupiedErrorDto;
 import org.igor.onlinegames.wordsgame.dto.WordsGamePlayerNameWasSetMsgDto;
 import org.igor.onlinegames.wordsgame.dto.WordsGameStateDto;
 import org.igor.onlinegames.wordsgame.dto.WordsPlayerDto;
+import org.igor.onlinegames.wordsgame.dto.WordsPlayerScoreDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -64,6 +66,11 @@ import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.WAITING_FOR_PLAY
 @Scope("prototype")
 public class WordsGameState extends State implements GameState {
 
+    // TODO: 13.09.2020 translation
+    // TODO: 13.09.2020 finish game button
+    // TODO: 13.09.2020 timer
+    // TODO: 13.09.2020 show selected word in phase ENTER_WORD
+
     private static final String PLAYER_STATE = "playerState";
     public static final int MAX_NUMBER_OF_PLAYERS = 10;
     private static final String TITLE = "title";
@@ -91,6 +98,7 @@ public class WordsGameState extends State implements GameState {
     private UUID gameOwnerUserId;
     private List<WordsPlayer> players;
     private Map<UUID,WordsPlayer> userIdToPlayer;
+    private Map<Integer,WordsPlayer> playerIdToPlayer;
     private String timerStr;
     private Integer timerSeconds;
     private ScheduledExecutorService scheduledExecutorService;
@@ -231,6 +239,10 @@ public class WordsGameState extends State implements GameState {
                     WordsPlayer::getUserId,
                     Function.identity()
             ));
+            playerIdToPlayer = players.stream().collect(Collectors.toMap(
+                    WordsPlayer::getPlayerId,
+                    Function.identity()
+            ));
             playerToMove = players.get(0);
             phase = SELECT_WORD;
             if (timerSeconds != null) {
@@ -351,6 +363,7 @@ public class WordsGameState extends State implements GameState {
                 .gameOwner(userId.equals(gameOwnerUserId))
                 .playerId(playerId)
                 .name(playerName)
+                .score(new WordsPlayerScore())
                 .feMessageSender(msg -> sendMessageToFe(userId, msg))
                 .build();
     }
@@ -497,10 +510,23 @@ public class WordsGameState extends State implements GameState {
         }
     }
 
+    private Double getPlayerOverallScore(WordsPlayer player) {
+        if (player.getScore().getNumOfAllWords() == 0) {
+            return 0.0;
+        } else {
+            return player.getScore().getNumOfCorrectWords() * 1.0 / player.getScore().getNumOfAllWords();
+        }
+    }
+
     private List<UserInputDto> createUserInputsDtoForPlayer(WordsPlayer player) {
         if (canShowSelectedWordInfoToPlayer(player)) {
             final SelectedWord selectedWord = getSelectedWordToShow();
+            final Comparator<Pair<Double, Map.Entry<Integer, UserInput>>> comparator = Comparator.comparing(Pair::getLeft);
             return selectedWord.getUserInputs().entrySet().stream()
+                    .map(entry -> Pair.of(playerIdToPlayer.get(entry.getKey()), entry))
+                    .map(pair -> Pair.of(getPlayerOverallScore(pair.getLeft()), pair.getRight()))
+                    .sorted(comparator.reversed())
+                    .map(Pair::getRight)
                     .map(entry ->
                             UserInputDto.builder()
                                     .playerId(entry.getKey())
@@ -551,8 +577,10 @@ public class WordsGameState extends State implements GameState {
             if (!userInput.getCorrect().isPresent()) {
                 userInput.setCorrect(Optional.of(selectedWord.getTextUpperCase().equals(userInputTextUpperCase)));
                 userInput.setText(text.trim());
+                player.getScore().setNumOfAllWords(player.getScore().getNumOfAllWords()+1);
                 if (userInput.getCorrect().get()) {
                     userInput.setConfirmed(true);
+                    player.getScore().setNumOfCorrectWords(player.getScore().getNumOfCorrectWords()+1);
                 }
             } else if (!userInput.getCorrect().get() && !userInput.isConfirmed()) {
                 userInput.setConfirmed(selectedWord.getTextUpperCase().equals(userInputTextUpperCase));
@@ -609,14 +637,14 @@ public class WordsGameState extends State implements GameState {
                     .textUpperCase(StringUtils.trimToEmpty(text).toUpperCase())
                     .userInputs(
                             players.stream()
-                            .filter(p -> p != player)
-                                    .collect(Collectors.toMap(
-                                            p -> p.getPlayerId(),
-                                            p -> UserInput.builder()
-                                                    .text("")
-                                                    .correct(Optional.empty())
-                                                    .build()
-                                    ))
+                                .collect(Collectors.toMap(
+                                        p -> p.getPlayerId(),
+                                        p -> UserInput.builder()
+                                                .text("")
+                                                .correct(Optional.empty())
+                                                .confirmed(p == player)
+                                                .build()
+                                ))
                     )
                     .build();
             phase = ENTER_WORD;
@@ -650,10 +678,17 @@ public class WordsGameState extends State implements GameState {
             return null;
         } else {
             return players.stream()
-                    .map(xoPlayer -> WordsPlayerDto.builder()
-                            .gameOwner(viewer.ifGameOwner(() -> xoPlayer.isGameOwner()))
-                            .playerId(xoPlayer.getPlayerId())
-                            .name(xoPlayer.getName())
+                    .map(player -> WordsPlayerDto.builder()
+                            .gameOwner(viewer.ifGameOwner(() -> player.isGameOwner()))
+                            .playerId(player.getPlayerId())
+                            .name(player.getName())
+                            .score(
+                                    player.getScore() == null ? null
+                                            : WordsPlayerScoreDto.builder()
+                                                .numOfAllWords(player.getScore().getNumOfAllWords())
+                                                .numOfCorrectWords(player.getScore().getNumOfCorrectWords())
+                                                .build()
+                            )
                             .build()
                     )
                     .collect(Collectors.toList());
