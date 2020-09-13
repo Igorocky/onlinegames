@@ -67,6 +67,7 @@ import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.WAITING_FOR_PLAY
 public class WordsGameState extends State implements GameState {
 
     // TODO: 13.09.2020 timer
+    // TODO: 13.09.2020 improve UI components layout
 
     private static final String PLAYER_STATE = "playerState";
     public static final int MAX_NUMBER_OF_PLAYERS = 10;
@@ -831,7 +832,10 @@ public class WordsGameState extends State implements GameState {
 
     @Override
     public synchronized String getShortDescription() {
-        return "W " + words.stream().map(List::stream).map(Stream::count).reduce(0l, Long::sum)
+        return "W " + words.stream()
+                .map(List::stream)
+                .map(stream -> stream.filter(word -> word.getActive() != null && word.getActive()).count())
+                .reduce(0l, Long::sum)
                 + (timerSeconds == null ? "" : " / T " + timerSeconds);
     }
 
