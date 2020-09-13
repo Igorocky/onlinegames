@@ -192,6 +192,20 @@ public class WordsGameState extends State implements GameState {
     }
 
     @RpcMethod
+    public synchronized void end(WebSocketSession session) {
+        if (phase != SELECT_WORD && phase != ENTER_WORD) {
+            return;
+        }
+        final UUID userId = extractUserIdFromSession(session);
+        if (!userId.equals(gameOwnerUserId)) {
+            sendMessageToFe(session, new WordsGameErrorDto("You don't have permissions to end this game."));
+        } else {
+            phase = FINISHED;
+            broadcastGameState();
+        }
+    }
+
+    @RpcMethod
     public synchronized void setTextToLearn(WebSocketSession session, String newTextToLearn) {
         executeOnBehalfOfPlayer(session, player -> setTextToLearn(player, newTextToLearn));
     }
@@ -426,6 +440,7 @@ public class WordsGameState extends State implements GameState {
                     .words(words)
                     .build();
         } else {
+            final Comparator<Pair<Double, WordsPlayerDto>> comparator = Comparator.comparing(Pair::getLeft);
             return WordsGameStateDto.builder()
                     .phase(phase)
                     .currentUserIsGameOwner(player.isGameOwner())
@@ -436,6 +451,14 @@ public class WordsGameState extends State implements GameState {
                     .textToLearn(textToLearn)
                     .words(words)
                     .selectedWord(createViewOfSelectedWord(player).getSelectedWord())
+                    .finalScores(
+                            phase != FINISHED ? null
+                                    : createPlayersDto(player, players).stream()
+                            .map(playerDto -> Pair.of(getPlayerOverallScore(playerDto), playerDto))
+                            .sorted(comparator.reversed())
+                            .map(Pair::getRight)
+                            .collect(Collectors.toList())
+                    )
                     .build();
         }
     }
@@ -511,10 +534,24 @@ public class WordsGameState extends State implements GameState {
     }
 
     private Double getPlayerOverallScore(WordsPlayer player) {
-        if (player.getScore().getNumOfAllWords() == 0) {
+        return getPlayerOverallScore(
+                player.getScore().getNumOfCorrectWords(),
+                player.getScore().getNumOfAllWords()
+        );
+    }
+
+    private Double getPlayerOverallScore(WordsPlayerDto player) {
+        return getPlayerOverallScore(
+                player.getScore().getNumOfCorrectWords(),
+                player.getScore().getNumOfAllWords()
+        );
+    }
+
+    private Double getPlayerOverallScore(int numOfCorrectWords, int numOfAllWords) {
+        if (numOfAllWords == 0) {
             return 0.0;
         } else {
-            return player.getScore().getNumOfCorrectWords() * 1.0 / player.getScore().getNumOfAllWords();
+            return numOfCorrectWords * 1.0 / numOfAllWords;
         }
     }
 

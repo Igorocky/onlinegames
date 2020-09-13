@@ -39,6 +39,7 @@ const WordsGamePlayerView = ({openView}) => {
     const prevBeState = usePrevious(beState)
 
     const [discardDialogOpened, setDiscardDialogOpened] = useState(false)
+    const [endGameDialogOpened, setEndGameDialogOpened] = useState(false)
 
     const [soundsEnabled, setSoundsEnabled] = useStateFromLocalStorageBoolean({
         key: WORDS_GAME_SOUNDS_ENABLED,
@@ -158,17 +159,18 @@ const WordsGamePlayerView = ({openView}) => {
                 title = `Enter the hidden word`
             }
             return RE.Typography({variant:"h6"}, title)
-        } else if (beState.phase == "FINISHED" || beState.phase == "DISCARDED") {
+        } else if (beState.phase == "DISCARDED") {
             return RE.Container.col.top.center({},{},
-                RE.Typography({variant:"h4"},beState.phase == "DISCARDED" ? "This game was discarded" : "Game over"),
-                beState.phase == "FINISHED" ? RE.Typography({variant:"h5"}, renderScores()) : null,
+                RE.Typography({variant:"h4"},"This game was discarded"),
+                RE.Button({onClick: goToGameSelector,}, RE.Icon({fontSize:"large"}, 'home'))
+            )
+        } else if (beState.phase == "FINISHED") {
+            return RE.Container.col.top.center({},{},
+                RE.Typography({variant:"h4"},"Game over"),
+                renderFinalScores(),
                 RE.Button({onClick: goToGameSelector,}, RE.Icon({fontSize:"large"}, 'home'))
             )
         }
-    }
-
-    function renderScores() {
-        return "Scores:  TBD"
     }
 
     function getCurrentPlayer() {
@@ -192,7 +194,8 @@ const WordsGamePlayerView = ({openView}) => {
             return RE.Container.col.top.center({},{style:{marginBottom:"20px"}},
                 renderGameStatus(),
                 renderField(),
-                playerNameDialogOpened?renderPlayerNameDialog():null
+                playerNameDialogOpened?renderPlayerNameDialog():null,
+                endGameDialogOpened?renderEndGameDialog():null
             )
         } else if (hasValue(passcode)) {
             return renderPasscodeDialog()
@@ -239,7 +242,7 @@ const WordsGamePlayerView = ({openView}) => {
                 ),
                 RE.Button({
                         style:{},
-                        disabled: !beState.currentUserIsGameOwner,
+                        disabled: !beState.currentUserIsGameOwner || beState.phase == 'FINISHED' || beState.phase == 'DISCARDED',
                         onClick: goToEditMode,
                     },
                     RE.Icon({fontSize:"large"}, 'edit')
@@ -252,12 +255,20 @@ const WordsGamePlayerView = ({openView}) => {
                 ),
                 RE.Button({
                         style:{},
+                        disabled: beState.phase == 'FINISHED' || beState.phase == 'DISCARDED',
                         onClick: () => {
                             setNewPlayerName(playerName)
                             setPlayerNameDialogOpened(true)
                         },
                     },
                     RE.Icon({fontSize:"large"}, 'account_box')
+                ),
+                RE.Button({
+                        style:{},
+                        disabled: !beState.currentUserIsGameOwner || beState.phase == 'FINISHED' || beState.phase == 'DISCARDED',
+                        onClick: () => setEndGameDialogOpened(true),
+                    },
+                    RE.Icon({fontSize:"large"}, 'cancel')
                 ),
                 RE.Button({
                         style:{},
@@ -336,7 +347,7 @@ const WordsGamePlayerView = ({openView}) => {
     }
 
     function renderUserInputs() {
-        if (beState?.selectedWord?.userInputs) {
+        if (beState?.selectedWord?.userInputs && !(beState.phase == 'FINISHED' || beState.phase == 'DISCARDED')) {
             const tableStyle = {borderCollapse: 'collapse', border: '1px solid lightgray', fontSize: '25px'};
             const cellWidth = '40px'
             const cellHeight = cellWidth
@@ -353,26 +364,56 @@ const WordsGamePlayerView = ({openView}) => {
                             )),
                             RE.th({key:'completeness', style: {...tableStyle, width: cellWidth, textAlign: 'center'}}, renderUserInputCompleteness()),
                         ),
-                        beState.selectedWord.userInputs.map(userInput => {
-                            return RE.tr({key: 'user-input' + userInput.playerId, style: {height: cellHeight}},
-                                RE.td({style: {...tableStyle}}, renderUserScore(userInput)),
-                                RE.td(
-                                    {
-                                        style: {
-                                            ...tableStyle,
-                                            ...(userInput.playerId == beState.currentPlayerId ? {textDecoration: 'underline', fontWeight: 'bold'} : {})
-                                        }
-                                    },
-                                    getPlayerById(userInput.playerId).name
-                                ),
-                                RE.td({style: {...tableStyle, width: cellWidth, textAlign: 'center'}}, renderUserInputCorrectness(userInput)),
-                                userInput.text.map((c, ci) => RE.td(
-                                    {key: 'char-' + ci, style: {...tableStyle, width: cellWidth, textAlign: 'center'}},
-                                    c
-                                )),
-                                RE.td({style: {...tableStyle, width: cellWidth, textAlign: 'center'}}, renderUserInputCompleteness(userInput)),
-                            );
-                        })
+                        beState.selectedWord.userInputs.map(userInput => RE.tr({key: 'user-input' + userInput.playerId, style: {height: cellHeight}},
+                            RE.td({style: {...tableStyle}}, renderUserScore(userInput)),
+                            RE.td(
+                                {
+                                    style: {
+                                        ...tableStyle,
+                                        ...(userInput.playerId == beState.currentPlayerId ? {textDecoration: 'underline', fontWeight: 'bold'} : {})
+                                    }
+                                },
+                                getPlayerById(userInput.playerId).name
+                            ),
+                            RE.td({style: {...tableStyle, width: cellWidth, textAlign: 'center'}}, renderUserInputCorrectness(userInput)),
+                            userInput.text.map((c, ci) => RE.td(
+                                {key: 'char-' + ci, style: {...tableStyle, width: cellWidth, textAlign: 'center'}},
+                                c
+                            )),
+                            RE.td({style: {...tableStyle, width: cellWidth, textAlign: 'center'}}, renderUserInputCompleteness(userInput)),
+                        ))
+                    )
+                )
+            )
+        } else {
+            return null
+        }
+    }
+
+    function renderFinalScores() {
+        if (beState.finalScores) {
+            const tableStyle = {borderCollapse: 'collapse', border: '1px solid lightgray', fontSize: '25px'};
+            return RE.Paper({},
+                RE.table({style:{borderCollapse: 'collapse'}},
+                    RE.tbody({style:{borderCollapse: 'collapse'}},
+                        RE.tr({style: {}},
+                            RE.th({key:'playerRank'}),
+                            RE.th({key:'playerNameCol'}),
+                            RE.th({key:'playerScoreCol'})
+                        ),
+                        beState.finalScores.map((player,rank) => RE.tr({key: 'final-score-' + player.playerId, style: {}},
+                            RE.td({style: {...tableStyle}}, rank+1),
+                            RE.td(
+                                {
+                                    style: {
+                                        ...tableStyle,
+                                        ...(player.playerId == beState.currentPlayerId ? {textDecoration: 'underline', fontWeight: 'bold'} : {})
+                                    }
+                                },
+                                player.name
+                            ),
+                            RE.td({style: {...tableStyle}}, renderUserScore(player))
+                        ))
                     )
                 )
             )
@@ -545,6 +586,11 @@ const WordsGamePlayerView = ({openView}) => {
         setDiscardDialogOpened(false)
     }
 
+    function endGame() {
+        backend.send("end")
+        setEndGameDialogOpened(false)
+    }
+
     function renderPasscodeDialog() {
         const tdStyle = {padding:'10px'}
         const inputElemsWidth = '200px';
@@ -635,6 +681,26 @@ const WordsGamePlayerView = ({openView}) => {
             RE.DialogActions({},
                 RE.Button({color:'primary', onClick: () => setDiscardDialogOpened(false) }, 'Cancel'),
                 RE.Button({variant:"contained", color:'secondary', onClick: discardGame}, 'Discard'),
+            ),
+        )
+    }
+
+    function renderEndGameDialog() {
+        const tdStyle = {padding:'10px'}
+        return RE.Dialog({open: true},
+            RE.DialogTitle({}, 'End this game'),
+            RE.DialogContent({dividers:true},
+                RE.table({},
+                    RE.tbody({},
+                        RE.tr({},
+                            RE.td({style: tdStyle}, 'Are you sure you want to end this game?')
+                        )
+                    )
+                )
+            ),
+            RE.DialogActions({},
+                RE.Button({color:'primary', onClick: () => setEndGameDialogOpened(false) }, 'Cancel'),
+                RE.Button({variant:"contained", color:'secondary', onClick: endGame}, 'End'),
             ),
         )
     }

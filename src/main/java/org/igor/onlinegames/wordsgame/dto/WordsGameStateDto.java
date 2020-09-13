@@ -28,4 +28,5 @@ public class WordsGameStateDto implements WordsGameDto {
     @With
     private List<List<TextToken>> words;
     private SelectedWordDto selectedWord;
+    private List<WordsPlayerDto> finalScores;
 }
