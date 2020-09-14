@@ -3,9 +3,11 @@
 const WORDS_GAME_SOUNDS_ENABLED = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'soundsEnabled'
 const WORDS_GAME_LANG_FROM = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'langFromIdx'
 const WORDS_GAME_LANG_TO = WORDS_GAME_PLAYER_VIEW_LOC_STORAGE_KEY_PREFIX + 'langToIdx'
-const WORDS_GAME_AVAILABLE_LANGUAGES = ['en', 'ru', 'pl']
 
 const WordsGamePlayerView = ({openView}) => {
+    const TEXT_FONT_STYLE = {fontSize: '25px', fontFamily:'courier', fontWeight:'bold'}
+    const WORDS_GAME_AVAILABLE_LANGUAGES = ['en', 'ru', 'pl']
+
     const query = useQuery()
     const gameId = query.get("gameId")
     const [playerName, setPlayerName] = useStateFromLocalStorageString({
@@ -37,6 +39,13 @@ const WordsGamePlayerView = ({openView}) => {
     const [incorrectPasscode, setIncorrectPasscode] = useState(false)
     const [beState, setBeState] = useState(null)
     const prevBeState = usePrevious(beState)
+
+    // function printState() {
+    //     console.log('beState?.selectedWord?.userInputs')
+    //     console.log(beState?.selectedWord?.userInputs)
+    //     console.log(JSON.stringify(beState?.selectedWord?.userInputs))
+    // }
+    // printState()
 
     const [discardDialogOpened, setDiscardDialogOpened] = useState(false)
     const [endGameDialogOpened, setEndGameDialogOpened] = useState(false)
@@ -72,8 +81,6 @@ const WordsGamePlayerView = ({openView}) => {
 
     function onMessageFromBackend(msg) {
         if (msg.type == "state") {
-            // console.log('beState')
-            // console.log(JSON.stringify(msg))
             setPasscode(null)
             setBeState(old => ({...old, ...msg}))
         } else if (msg.type == "msg:PlayerNameWasSet") {
@@ -124,7 +131,7 @@ const WordsGamePlayerView = ({openView}) => {
     function renderGameStatus() {
         if (beState.phase == "WAITING_FOR_PLAYERS_TO_JOIN") {
             return RE.Container.col.top.center({},{style:{marginBottom: "15px"}},
-                RE.Typography({variant:"h3"},(hasValue(beState.title)?(beState.title + ': '):'') + 'Waiting for players to join...'),
+                RE.Typography({variant:"h6"},(hasValue(beState.title)?(beState.title + ': '):'') + 'Waiting for players to join...'),
                 renderJoinedPlayersInfo(),
                 (beState.currentUserIsGameOwner && hasValue(beState.passcode))
                     ? RE.Typography({},'Passcode: ' + beState.passcode)
@@ -332,10 +339,19 @@ const WordsGamePlayerView = ({openView}) => {
         if (!hasValue(userInput.correct)) {
             return null
         } else if (userInput.correct) {
-            return RE.span({style:{color:"green", fontWeight: "bold"}}, "\u2713")
+            return RE.span({style:{color:'green', fontWeight: 'bold'}}, '\u2713')
         } else {
-            return RE.span({style:{color:"red", fontWeight: "bold"}}, "\u2717")
+            return RE.span({style:{color:'red', fontWeight: 'bold'}}, '\u2717')
         }
+    }
+
+    function getUserInputByUserId(userId) {
+        return  (beState?.selectedWord?.userInputs??[]).find(userInput => userInput.playerId==userId)
+    }
+
+    function isUserInputConfirmed(userId) {
+        const userInput = getUserInputByUserId(userId)
+        return userInput && userInput.confirmed
     }
 
     function renderUserInputCompleteness(userInput) {
@@ -347,7 +363,7 @@ const WordsGamePlayerView = ({openView}) => {
     }
 
     function renderUserInputs() {
-        if (beState?.selectedWord?.userInputs && !(beState.phase == 'FINISHED' || beState.phase == 'DISCARDED')) {
+        if (isUserInputConfirmed(beState?.currentPlayerId) && !(beState.phase == 'FINISHED' || beState.phase == 'DISCARDED')) {
             const tableStyle = {borderCollapse: 'collapse', border: '1px solid lightgray', fontSize: '25px'};
             const cellWidth = '40px'
             const cellHeight = cellWidth
@@ -434,9 +450,9 @@ const WordsGamePlayerView = ({openView}) => {
         if (!isActive) {
             return {}
         } else {
-            const activeWordColor = 'yellow'
+            const activeWordColor = 'khaki'
             const highlightedWordColor = 'coral'
-            const availableForSelectionWordColor = 'cyan'
+            const availableForSelectionWordColor = 'mediumaquamarine'
             const selectedWordColor = 'dodgerblue'
             let backgroundColor
             if (highlightActiveWords) {
@@ -511,6 +527,8 @@ const WordsGamePlayerView = ({openView}) => {
         const key = `${paragraphIndex}-${wordIndex}`;
         if (hasValue(beState.currentPlayerId) && beState.phase == 'ENTER_WORD' && !userInput?.confirmed && !isTurnOfCurrentUser()
             && beState.selectedWord?.paragraphIndex==paragraphIndex && beState.selectedWord?.wordIndex==wordIndex) {
+            let textFieldBorder = (getUserInputByUserId(beState?.currentPlayerId)?.correct===false)
+                ? 'red 2px solid' : 'black 1px solid'
             return RE.Fragment({key:'fragment-'+key},
                 (hasValue(userInput) && !userInput.confirmed) ? [
                     renderWordText({
@@ -518,22 +536,36 @@ const WordsGamePlayerView = ({openView}) => {
                         isActive: false, style:{color:'red', textDecoration: 'line-through'}
                     }),
                     renderWordText({
+                        key:'incorrect-word-space'+key, paragraphIndex:-1, wordIndex:-1, text: '\u00A0',
+                        isActive: false, style:{}
+                    }),
+                    renderWordText({
                         key:'correct-word-'+key, paragraphIndex:-1, wordIndex:-1,
                         text: beState.selectedWord.expectedText.join(''),
                         isActive: false, style:{color:'green'}
                     }),
+                    renderWordText({
+                        key:'correct-word-space'+key, paragraphIndex:-1, wordIndex:-1, text: '\u00A0',
+                        isActive: false, style:{}
+                    }),
                 ] : [],
-                RE.TextField(
-                    {
-                        key: key,
-                        variant: 'outlined',
-                        style: {width: '200px'},
-                        onChange: event => setEnteredWord(event.target.value),
-                        value: enteredWord,
-                        onKeyDown: event => event.nativeEvent.keyCode == 13 ? sendEnteredWord() : null,
-                        autoFocus: true,
+                RE.InputBase({
+                    key: key,
+                    onKeyDown: event => event.nativeEvent.keyCode == 13 ? sendEnteredWord() : null,
+                    autoFocus: true,
+                    value: enteredWord,
+                    variant: "outlined",
+                    onChange: event => setEnteredWord(event.target.value),
+                    style: {
+                        background: "moccasin",
+                        padding:"0px 5px",
+                        borderRadius: "5px",
+                        border: textFieldBorder,
+                        marginLeft: "5px",
+                        width: "250px",
+                        ...TEXT_FONT_STYLE
                     }
-                )
+                })
             )
         } else {
             return renderWordText({key: key, paragraphIndex, wordIndex, text: word.value, isActive: word.active})
@@ -559,7 +591,7 @@ const WordsGamePlayerView = ({openView}) => {
                 )
             } else {
                 return RE.Container.col.top.left({}, {style:{marginBottom:"20px"}},
-                    beState.words.map((p, pi) => RE.Typography({key:pi, variant:"h5"},
+                    beState.words.map((p, pi) => RE.div({key:pi, style: {...TEXT_FONT_STYLE, lineHeight:'35px'}},
                         p.filter(w=>!w.meta).map((w, wi) => renderWord({paragraphIndex:pi, wordIndex:wi, word: w}))
                     ))
                 )

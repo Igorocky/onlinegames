@@ -67,7 +67,6 @@ import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.WAITING_FOR_PLAY
 public class WordsGameState extends State implements GameState {
 
     // TODO: 13.09.2020 timer
-    // TODO: 13.09.2020 improve UI components layout
 
     private static final String PLAYER_STATE = "playerState";
     public static final int MAX_NUMBER_OF_PLAYERS = 10;
