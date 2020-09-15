@@ -22,4 +22,20 @@ public class TextToken {
     private Boolean ignored;
     private Boolean meta;
     private Boolean active;
+
+    public boolean isIgnored() {
+        return isTrue(ignored);
+    }
+
+    public boolean isUnsplittable() {
+        return isTrue(unsplittable);
+    }
+
+    public boolean isMeta() {
+        return isTrue(meta);
+    }
+
+    private boolean isTrue(Boolean flag) {
+        return flag != null && flag;
+    }
 }

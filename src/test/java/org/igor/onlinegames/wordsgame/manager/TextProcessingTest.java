@@ -80,6 +80,31 @@ public class TextProcessingTest {
     }
 
     @Test
+    public void splitOnSentences_should_work_correctly2() throws IOException {
+        //given
+        String text = IOUtils.resourceToString("/text-parsing/text-to-parse-2.txt", StandardCharsets.UTF_8);
+
+        //when
+        List<List<TextToken>> paragraphs = TextProcessing.splitOnParagraphs(text, "ignored\n");
+
+        //then
+        List<TextToken> tokens = new ArrayList<>();
+        paragraphs.forEach(tokens::addAll);
+
+        assertEquals(TextToken.builder().value("{").meta(true).build(), tokens.get(7));
+        assertEquals(TextToken.builder().value("1.").ignored(true).build(), tokens.get(8));
+        assertEquals(TextToken.builder().value("}").meta(true).build(), tokens.get(9));
+
+        assertEquals(TextToken.builder().value("{").meta(true).build(), tokens.get(13));
+        assertEquals(TextToken.builder().value("2.").ignored(true).build(), tokens.get(14));
+        assertEquals(TextToken.builder().value("}").meta(true).build(), tokens.get(15));
+
+        assertEquals(TextToken.builder().value("{").meta(true).build(), tokens.get(19));
+        assertEquals(TextToken.builder().value("3.").ignored(true).build(), tokens.get(20));
+        assertEquals(TextToken.builder().value("}").meta(true).build(), tokens.get(21));
+    }
+
+    @Test
     public void splitOnSentences_should_work_correctly_2() throws IOException {
         //given
         String text = "[site.com]";

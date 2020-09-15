@@ -85,6 +85,10 @@ public class TextProcessing {
     private static List<TextToken> splitByLongestSequence(List<TextToken> tokens, List<String> substrings) {
         List<TextToken> res = new LinkedList<>();
         for (TextToken token : tokens) {
+            if (token.isIgnored() || token.isUnsplittable()) {
+                res.add(token);
+                continue;
+            }
             String val = token.getValue();
             if (isSplittableBy(token, substrings)) {
                 int s = 0;
@@ -130,7 +134,7 @@ public class TextProcessing {
         String val = token.getValue();
         if (containsOneOf(val, R_N)) {
             token.setMeta(true);
-        } else if (!(ignoreList.contains(val) || isIgnored(token) || isMeta(token)
+        } else if (!(ignoreList.contains(val) || token.isIgnored() || token.isMeta()
                 || NOT_ACTIVE_PATTERN.matcher(val).matches())) {
             token.setActive(true);
         }
@@ -203,14 +207,6 @@ public class TextProcessing {
 
     private static boolean isEndOfParagraph(TextToken token) {
         return isSplittableBy(token, R_N);
-    }
-
-    private static boolean isIgnored(TextToken token) {
-        return token.getIgnored() != null && token.getIgnored();
-    }
-
-    private static boolean isMeta(TextToken token) {
-        return token.getMeta() != null && token.getMeta();
     }
 
     private static List<TextToken> tokenize(List<Object> text) {
