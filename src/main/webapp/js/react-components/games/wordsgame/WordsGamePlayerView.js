@@ -592,7 +592,7 @@ const WordsGamePlayerView = ({openView}) => {
             } else {
                 return RE.Container.col.top.left({}, {style:{marginBottom:"20px"}},
                     beState.words.map((p, pi) => RE.div({key:pi, style: {...TEXT_FONT_STYLE, lineHeight:'35px'}},
-                        p.filter(w=>!w.meta).map((w, wi) => renderWord({paragraphIndex:pi, wordIndex:wi, word: w}))
+                        p.map((w, wi) => [w,wi]).filter(([w,wi])=>!w.meta).map(([w,wi]) => renderWord({paragraphIndex:pi, wordIndex:wi, word: w}))
                     ))
                 )
             }

@@ -658,7 +658,7 @@ public class WordsGameState extends State implements GameState {
                 return;
             }
             final TextToken selectedWordToken = paragraph.get(wordIndex);
-            if (selectedWordToken.getActive() == null || !selectedWordToken.getActive()) {
+            if (!selectedWordToken.isActive()) {
                 player.sendMessageToFe(new WordsGameErrorDto(
                         "Selected word is not active"
                 ));

@@ -35,6 +35,10 @@ public class TextToken {
         return isTrue(meta);
     }
 
+    public boolean isActive() {
+        return isTrue(active);
+    }
+
     private boolean isTrue(Boolean flag) {
         return flag != null && flag;
     }
