@@ -66,9 +66,7 @@ import static org.igor.onlinegames.wordsgame.dto.WordsGamePhase.WAITING_FOR_PLAY
 @Scope("prototype")
 public class WordsGameState extends State implements GameState {
 
-    // TODO: 13.09.2020 timer
-    // TODO: 14.09.2020 test pass code on the tablet
-    // TODO: 14.09.2020 remove timer select
+    // TODO: 13.09.2020 implement timer
     // TODO: 14.09.2020 highlight words which have been selected in the past by current player
 
     private static final String PLAYER_STATE = "playerState";
@@ -301,16 +299,18 @@ public class WordsGameState extends State implements GameState {
         final UUID userId = extractUserIdFromSession(session);
         if (passcode == null || userId.equals(gameOwnerUserId) || userIdsEverConnected.contains(userId)) {
             return true;
-        } else if (bindParams != null && bindParams.has(PASSCODE)) {
-            String userProvidedPasscode = StringUtils.trimToNull(bindParams.get(PASSCODE).asText(null));
-            final boolean passcodeMatches = passcode.equals(userProvidedPasscode);
-            if (!passcodeMatches) {
-                sendMessageToFe(session, new WordsGameIncorrectPasscodeErrorDto());
-            }
-            return passcodeMatches;
         } else {
-            sendMessageToFe(session, new WordsGamePasscodeIsRequiredErrorDto());
-            return false;
+            String userProvidedPasscode = getNonEmptyTextFromParams(bindParams, PASSCODE);
+            if (userProvidedPasscode == null) {
+                sendMessageToFe(session, new WordsGamePasscodeIsRequiredErrorDto());
+                return false;
+            } else {
+                final boolean passcodeMatches = passcode.equals(userProvidedPasscode);
+                if (!passcodeMatches) {
+                    sendMessageToFe(session, new WordsGameIncorrectPasscodeErrorDto());
+                }
+                return passcodeMatches;
+            }
         }
     }
 

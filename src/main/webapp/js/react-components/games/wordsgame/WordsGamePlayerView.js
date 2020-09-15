@@ -31,11 +31,7 @@ const WordsGamePlayerView = ({openView}) => {
     })
 
     const backend = useBackend({stateId:gameId, bindParams:{playerName}, onMessageFromBackend})
-    const [passcode, setPasscode] = useStateFromLocalStorageString({
-        key: WORDS_GAME_PASSCODE_KEY,
-        nullable: true,
-        defaultValue: null
-    })
+    const [passcode, setPasscode] = useState(null)
     const [incorrectPasscode, setIncorrectPasscode] = useState(false)
     const [beState, setBeState] = useState(null)
     const prevBeState = usePrevious(beState)
@@ -82,6 +78,7 @@ const WordsGamePlayerView = ({openView}) => {
     function onMessageFromBackend(msg) {
         if (msg.type == "state") {
             setPasscode(null)
+            setIncorrectPasscode(false)
             setBeState(old => ({...old, ...msg}))
         } else if (msg.type == "msg:PlayerNameWasSet") {
             setPlayerName(msg.newPlayerName)
@@ -94,7 +91,7 @@ const WordsGamePlayerView = ({openView}) => {
         } else if (msg.type == "error:NoAvailablePlaces") {
             openView(VIEW_URLS.gameSelector)
         } else if (msg.type == "error:PasscodeRequired") {
-            setPasscode("")
+            setPasscode('')
         } else if (msg.type == "error:IncorrectPasscode") {
             setIncorrectPasscode(true)
         } else if (msg.type == "error:PlayerNameIsOccupied") {
@@ -272,7 +269,10 @@ const WordsGamePlayerView = ({openView}) => {
                 ),
                 RE.Button({
                         style:{},
-                        disabled: !beState.currentUserIsGameOwner || beState.phase == 'FINISHED' || beState.phase == 'DISCARDED',
+                        disabled: !beState.currentUserIsGameOwner
+                            || beState.phase == 'WAITING_FOR_PLAYERS_TO_JOIN'
+                            || beState.phase == 'FINISHED'
+                            || beState.phase == 'DISCARDED',
                         onClick: () => setEndGameDialogOpened(true),
                     },
                     RE.Icon({fontSize:"large"}, 'cancel')

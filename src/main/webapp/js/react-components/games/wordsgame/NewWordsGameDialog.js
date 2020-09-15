@@ -32,7 +32,7 @@ const NewWordsGameDialog = ({openView, onCancel}) => {
     function createNewWordsGame() {
         doRpcCall(
             "createNewBackendState",
-            {stateType: "WordsGame", initParams: {title, playerName, passcode, timer, textToLearn}},
+            {stateType: "WordsGame", initParams: {title, playerName, passcode, textToLearn}},
             gameId => {
                 openView(VIEW_URLS.wordsGame({gameId}))
             }
@@ -55,23 +55,6 @@ const NewWordsGameDialog = ({openView, onCancel}) => {
                                     onChange: event => setPlayerName(event.target.value),
                                     value: playerName
                                 }
-                            )
-                        )
-                    ),
-                    RE.tr({},
-                        RE.td({style: tdStyle},
-                            RE.FormControl({variant:'outlined'},
-                                RE.InputLabel({}, 'Timer (optional)'),
-                                RE.Select(
-                                    {
-                                        value: timer,
-                                        label:'Timer (optional)',
-                                        onChange: event => setTimer(event.target.value),
-                                        style: {width: inputElemsWidth}
-                                    },
-                                    ['none', '5s', '10s', '15s', '20s', '25s', '30s', '40s', '50s', '1m', '1m30s', '2m', '3m']
-                                        .map(dur => RE.MenuItem({key: dur, value: dur=='none'?'':dur}, dur))
-                                )
                             )
                         )
                     ),

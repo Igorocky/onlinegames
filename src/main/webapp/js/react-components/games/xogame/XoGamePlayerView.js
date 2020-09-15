@@ -15,11 +15,7 @@ const XoGamePlayerView = ({openView}) => {
     const [playerNameDialogOpened, setPlayerNameDialogOpened] = useState(false)
 
     const backend = useBackend({stateId:gameId, bindParams:{playerName}, onMessageFromBackend})
-    const [passcode, setPasscode] = useStateFromLocalStorageString({
-        key: XO_GAME_PASSCODE_KEY,
-        nullable: true,
-        defaultValue: null
-    })
+    const [passcode, setPasscode] = useState(null)
     const [incorrectPasscode, setIncorrectPasscode] = useState(false)
     const [beState, setBeState] = useState(null)
     const prevBeState = usePrevious(beState)
@@ -56,20 +52,21 @@ const XoGamePlayerView = ({openView}) => {
     }, [currLastCellStr])
 
     function onMessageFromBackend(msg) {
-        if (msg.type && msg.type == "state") {
+        if (msg.type == "state") {
             setPasscode(null)
+            setIncorrectPasscode(false)
             setBeState(msg)
-        } else if (msg.type && msg.type == "msg:PlayerNameWasSet") {
+        } else if (msg.type == "msg:PlayerNameWasSet") {
             setPlayerName(msg.newPlayerName)
             setConflictingPlayerName(null)
             setPlayerNameDialogOpened(false)
-        } else if (msg.type && msg.type == "error:NoAvailablePlaces") {
+        } else if (msg.type == "error:NoAvailablePlaces") {
             openView(VIEW_URLS.gameSelector)
-        } else if (msg.type && msg.type == "error:PasscodeRequired") {
-            setPasscode("")
-        } else if (msg.type && msg.type == "error:IncorrectPasscode") {
+        } else if (msg.type == "error:PasscodeRequired") {
+            setPasscode('')
+        } else if (msg.type == "error:IncorrectPasscode") {
             setIncorrectPasscode(true)
-        } else if (msg.type && msg.type == "error:PlayerNameIsOccupied") {
+        } else if (msg.type == "error:PlayerNameIsOccupied") {
             setNewPlayerName(msg.conflictingPlayerName)
             setConflictingPlayerName(msg.conflictingPlayerName)
             setPlayerNameDialogOpened(true)

@@ -280,16 +280,18 @@ public class XoGameState extends State implements GameState {
         final UUID userId = extractUserIdFromSession(session);
         if (passcode == null || userId.equals(gameOwnerUserId) || userIdsEverConnected.contains(userId)) {
             return true;
-        } else if (bindParams != null && bindParams.has(PASSCODE)) {
-            String userProvidedPasscode = StringUtils.trimToNull(bindParams.get(PASSCODE).asText(null));
-            final boolean passcodeMatches = passcode.equals(userProvidedPasscode);
-            if (!passcodeMatches) {
-                sendMessageToFe(session, new XoGameIncorrectPasscodeErrorDto());
-            }
-            return passcodeMatches;
         } else {
-            sendMessageToFe(session, new XoGamePasscodeIsRequiredErrorDto());
-            return false;
+            String userProvidedPasscode = getNonEmptyTextFromParams(bindParams, PASSCODE);
+            if (userProvidedPasscode == null) {
+                sendMessageToFe(session, new XoGamePasscodeIsRequiredErrorDto());
+                return false;
+            } else {
+                final boolean passcodeMatches = passcode.equals(userProvidedPasscode);
+                if (!passcodeMatches) {
+                    sendMessageToFe(session, new XoGameIncorrectPasscodeErrorDto());
+                }
+                return passcodeMatches;
+            }
         }
     }
 
