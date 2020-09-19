@@ -68,6 +68,7 @@ public class WordsGameState extends State implements GameState {
 
     // TODO: 13.09.2020 implement timer
     // TODO: 14.09.2020 highlight words which have been selected in the past by current player
+    // TODO: 18.09.2020 incognito player names on the view when no name is set
 
     private static final String PLAYER_STATE = "playerState";
     public static final int MAX_NUMBER_OF_PLAYERS = 10;
