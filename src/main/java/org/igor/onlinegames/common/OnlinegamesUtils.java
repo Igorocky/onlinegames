@@ -1,20 +1,10 @@
 package org.igor.onlinegames.common;
 
-import org.hibernate.validator.internal.util.CollectionHelper;
 import org.igor.onlinegames.exceptions.OnlinegamesException;
 import org.igor.onlinegames.model.UserSessionData;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -256,7 +246,7 @@ public class OnlinegamesUtils {
     }
 
     public static <E> List<E> listOf(E... elems) {
-        return CollectionHelper.toImmutableList(Arrays.asList(elems));
+        return Collections.unmodifiableList(Arrays.asList(elems));
     }
 
     public static <E> Set<E> setOf(E... elems) {

@@ -2,11 +2,13 @@ package org.igor.onlinegames.common;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.igor.onlinegames.xogame.dto.history.XoGameRecordDto;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.time.Instant;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class InstantSerializerTest {
     private ObjectMapper mapper = new ObjectMapper();
@@ -22,7 +24,7 @@ public class InstantSerializerTest {
         final XoGameRecordDto dto2 = mapper.readValue(dto1Str, XoGameRecordDto.class);
 
         //then
-        Assert.assertNull(dto2.getStartedAt());
+        assertNull(dto2.getStartedAt());
     }
 
     @Test
@@ -38,7 +40,7 @@ public class InstantSerializerTest {
         final XoGameRecordDto dto2 = mapper.readValue(dto1Str, XoGameRecordDto.class);
 
         //then
-        Assert.assertEquals(expectedStartedAt, dto2.getStartedAt());
+        assertEquals(expectedStartedAt, dto2.getStartedAt());
     }
 
 }
